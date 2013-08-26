@@ -25,10 +25,14 @@
     <UpgradeBackupLocation>
     </UpgradeBackupLocation>
     <SignAssembly>true</SignAssembly>
-    <SccProjectName>SAK</SccProjectName>
-    <SccLocalPath>SAK</SccLocalPath>
-    <SccAuxPath>SAK</SccAuxPath>
-    <SccProvider>SAK</SccProvider>
+    <SccProjectName>
+    </SccProjectName>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccProvider>
+    </SccProvider>
     <OldToolsVersion>3.5</OldToolsVersion>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <IsWebBootstrapper>false</IsWebBootstrapper>
@@ -173,11 +177,11 @@
     <None Include="Nuget\pack.bat" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PO.Core.Configuration\Civic.Core.Configuration.csproj">
+    <ProjectReference Include="..\Civic.Core.Configuration\Civic.Core.Configuration.csproj">
       <Project>{4243bf37-b025-4ad1-874e-8b118869c5cf}</Project>
       <Name>Civic.Core.Configuration</Name>
     </ProjectReference>
-    <ProjectReference Include="..\PO.Core.Logging\Civic.Core.Logging.csproj">
+    <ProjectReference Include="..\Civic.Core.Logging\Civic.Core.Logging.csproj">
       <Project>{62b8463d-2c19-47c2-a7c2-2740f78c27d1}</Project>
       <Name>Civic.Core.Logging</Name>
     </ProjectReference>
