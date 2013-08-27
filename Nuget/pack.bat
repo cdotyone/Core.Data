@@ -1,15 +1,19 @@
-cd %3
-echo %3
-del  %3*.nupkg
-..\..\..\..\.nuget\AssemblyVersionFinder.exe -s -d %2 > tmpFile
+cd %2
+echo %2
+del  %2*.nupkg
+SET PATH=%4.nuget;%PATH%
+AssemblyVersionFinder.exe -s -d %4\references > tmpFile
 set /p version=<tmpFile
-
-IF %4==Nuget (
-	FOR %%X in ("%2nuget\*.nuspec") DO (
-	..\..\..\..\.nuget\nuget.exe pack %%X -Version %version%
+set nugetconfig=%4.nuget\nuget.config
+echo %nugetconfig%
+IF %3==Nuget (
+	FOR %%X in ("%1nuget\*.nuspec") DO (
+		ECHO nuget.exe pack %%X -Version %version%
+		nuget.exe pack %%X -Version %version%
 	)
 
-	FOR %%X in ("%3*.nupkg") DO (
-	..\..\..\..\.nuget\nuget.exe push %%X -s %1 XgjOkxvZaaHlvOQXfi7r9WDfOKsjRhnZ
+	FOR %%X in ("%2*.nupkg") DO (
+		ECHO nuget.exe push %%X -Config %nugetconfig%
+		nuget.exe push %%X -Config %nugetconfig%
 	)
 )
