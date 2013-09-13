@@ -16,8 +16,8 @@ namespace Civic.Core.Data
 		private Encoding _encoding;
 		private readonly StringBuilder _columnBuilder = new StringBuilder(100);
 		private readonly Type _type = Type.File;
-		private List<string> _fieldNames;
 		private List<string> _currentRow;
+		private int _lineCount = 0;
 
 		#region Enums
 
@@ -39,11 +39,15 @@ namespace Civic.Core.Data
 		/// Initialises the reader to work from a file
 		/// </summary>
 		/// <param name="filePath">File path</param>
-		public CsvReader(string filePath)
+		/// <param name="hasHeaderRow">Does the first line in the file contain the has header row</param>
+		public CsvReader(string filePath, bool hasHeaderRow = true)
 		{
 			Depth = 0;
 			RecordsAffected = 0;
 			_type = Type.File;
+			HasHeaderRow = hasHeaderRow;
+			TrimColumns = true;
+
 			initialize(filePath, Encoding.Default);
 		}
 
@@ -52,11 +56,15 @@ namespace Civic.Core.Data
 		/// </summary>
 		/// <param name="filePath">File path</param>
 		/// <param name="encoding">Encoding</param>
-		public CsvReader(string filePath, Encoding encoding)
+		/// <param name="hasHeaderRow">Does the first line in the file contain the has header row</param>
+		public CsvReader(string filePath, Encoding encoding, bool hasHeaderRow = true)
 		{
 			Depth = 0;
 			RecordsAffected = 0;
 			_type = Type.File;
+			HasHeaderRow = hasHeaderRow;
+			TrimColumns = true;
+
 			initialize(filePath, encoding);
 		}
 
@@ -64,11 +72,14 @@ namespace Civic.Core.Data
 		/// Initialises the reader to work from an existing stream
 		/// </summary>
 		/// <param name="stream">Stream</param>
-		public CsvReader(Stream stream)
+		/// <param name="hasHeaderRow">Does the first line in the file contain the has header row</param>
+		public CsvReader(Stream stream, bool hasHeaderRow = true)
 		{
 			Depth = 0;
 			RecordsAffected = 0;
 			_type = Type.Stream;
+			HasHeaderRow = hasHeaderRow;
+
 			initialize(stream, Encoding.Default);
 		}
 
@@ -77,11 +88,15 @@ namespace Civic.Core.Data
 		/// </summary>
 		/// <param name="stream">Stream</param>
 		/// <param name="encoding">Encoding</param>
-		public CsvReader(Stream stream, Encoding encoding)
+		/// <param name="hasHeaderRow">Does the first line in the file contain the has header row</param>
+		public CsvReader(Stream stream, Encoding encoding, bool hasHeaderRow = true)
 		{
 			Depth = 0;
 			RecordsAffected = 0;
 			_type = Type.Stream;
+			HasHeaderRow = hasHeaderRow;
+			TrimColumns = true;
+
 			initialize(stream, encoding);
 		}
 
@@ -90,11 +105,15 @@ namespace Civic.Core.Data
 		/// </summary>
 		/// <param name="encoding"></param>
 		/// <param name="csvContent"></param>
-		public CsvReader(Encoding encoding, string csvContent)
+		/// <param name="hasHeaderRow">Does the first line in the file contain the has header row</param>
+		public CsvReader(Encoding encoding, string csvContent, bool hasHeaderRow = true)
 		{
 			Depth = 0;
 			RecordsAffected = 0;
 			_type = Type.String;
+			HasHeaderRow = hasHeaderRow;
+			TrimColumns = true;
+
 			initialize(encoding, csvContent);
 		}
 
@@ -103,7 +122,7 @@ namespace Civic.Core.Data
 		/// </summary>
 		public void Dispose()
 		{
-			_fieldNames = null;
+			Names = null;
 			_currentRow = null;
 
 			closeStreams();
@@ -179,6 +198,15 @@ namespace Civic.Core.Data
 			_stream.Position = 0;
 			_encoding = (encoding ?? Encoding.Default);
 			_streamReader = new StreamReader(_stream, _encoding);
+
+			if (HasHeaderRow)
+			{
+				if (Read())
+				{
+					Names = _currentRow;
+					_currentRow = null;
+				}
+			}
 		}
 
 		/// <summary>
@@ -206,7 +234,7 @@ namespace Civic.Core.Data
 		/// <param name="line">Line</param>
 		private void parseLine(string line)
 		{
-			_fieldNames = new List<string>();
+			_currentRow = new List<string>();
 			bool inColumn = false;
 			bool inQuotes = false;
 			_columnBuilder.Remove(0, _columnBuilder.Length);
@@ -224,7 +252,14 @@ namespace Civic.Core.Data
 					if (character == '"')
 						inQuotes = true;
 					else
-						_columnBuilder.Append(character);
+					{
+						if (character == ',' && !inQuotes)
+						{
+							_currentRow.Add("");
+							continue;
+						}
+						else _columnBuilder.Append(character);
+					}
 
 					inColumn = true;
 					continue;
@@ -251,7 +286,7 @@ namespace Civic.Core.Data
 				// If we are no longer in the column clear the builder and add the columns to the list
 				if (!inColumn)
 				{
-					Fields.Add(TrimColumns ? _columnBuilder.ToString().Trim() : _columnBuilder.ToString());
+					_currentRow.Add(TrimColumns ? _columnBuilder.ToString().Trim(new []{' ','"'}) : _columnBuilder.ToString());
 					_columnBuilder.Remove(0, _columnBuilder.Length);
 				}
 				else // append the current column
@@ -260,7 +295,7 @@ namespace Civic.Core.Data
 
 			// If we are still inside a column add a new one
 			if (inColumn)
-				Fields.Add(TrimColumns ? _columnBuilder.ToString().Trim() : _columnBuilder.ToString());
+				_currentRow.Add(TrimColumns ? _columnBuilder.ToString().Trim() : _columnBuilder.ToString());
 		}
 
 		#endregion Methods
@@ -276,8 +311,8 @@ namespace Civic.Core.Data
 		/// <param name="i">The index of the field to find. </param><exception cref="T:System.IndexOutOfRangeException">The index passed was outside the range of 0 through <see cref="P:System.Data.IDataRecord.FieldCount"/>. </exception><filterpriority>2</filterpriority>
 		public string GetName(int i)
 		{
-			if (i >= 0 && _fieldNames != null && _fieldNames.Count > i) return _fieldNames[i];
-			throw new Exception("No column name was for for index position: " + i);
+			if (i >= 0 && Names != null && Names.Count > i) return Names[i];
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -319,7 +354,7 @@ namespace Civic.Core.Data
 		private string getStringValue(int i)
 		{
 			if (i >= 0 && _currentRow != null && _currentRow.Count > i) return _currentRow[i];
-			throw new Exception("No column was for for index posistion: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -354,7 +389,7 @@ namespace Civic.Core.Data
 		{
 			if(string.IsNullOrEmpty(name))
 				throw new ArgumentNullException("name","name argument can not be null or empty");
-			if (_fieldNames != null && _fieldNames.Count > 0) return _fieldNames.IndexOf(name);
+			if (Names != null && Names.Count > 0) return Names.IndexOf(name);
 			return -1;
 		}
 
@@ -369,7 +404,7 @@ namespace Civic.Core.Data
 		{
 			if (i >= 0 && _currentRow != null && _currentRow.Count > i)
 				return _currentRow[i].ToLower() == "true" || _currentRow[i] == "1";
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -383,7 +418,7 @@ namespace Civic.Core.Data
 		{
 			if (i >= 0 && _currentRow != null && _currentRow.Count > i)
 				return Encoding.UTF8.GetBytes(_currentRow[i])[0];
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -399,7 +434,7 @@ namespace Civic.Core.Data
 			{
 				return Encoding.UTF8.GetBytes(_currentRow[i], (int)fieldOffset, length, buffer, bufferoffset);
 			}
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -413,7 +448,7 @@ namespace Civic.Core.Data
 		{
 			if (i >= 0 && _currentRow != null && _currentRow.Count > i)
 				return _currentRow[i][0];
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -427,7 +462,7 @@ namespace Civic.Core.Data
 		{
 			if (i >= 0 && _currentRow != null && _currentRow.Count > i)
 				Array.Copy(_currentRow[i].ToCharArray(),fieldoffset,buffer,bufferoffset,length);
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -441,7 +476,7 @@ namespace Civic.Core.Data
 		{
 			if (i >= 0 && _currentRow != null && _currentRow.Count > i)
 				return Guid.Parse(_currentRow[i]);
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -459,7 +494,7 @@ namespace Civic.Core.Data
 				Int16.TryParse(_currentRow[i], out val);
 				return val;
 			}
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -477,7 +512,7 @@ namespace Civic.Core.Data
 				Int32.TryParse(_currentRow[i], out val);
 				return val;
 			}
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -495,7 +530,7 @@ namespace Civic.Core.Data
 				Int64.TryParse(_currentRow[i], out val);
 				return val;
 			}
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -513,7 +548,7 @@ namespace Civic.Core.Data
 				float.TryParse(_currentRow[i], out val);
 				return val;
 			}
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -531,7 +566,7 @@ namespace Civic.Core.Data
 				double.TryParse(_currentRow[i], out val);
 				return val;
 			}
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -545,7 +580,7 @@ namespace Civic.Core.Data
 		{
 			if (i >= 0 && _currentRow != null && _currentRow.Count > i)
 				return _currentRow[i];
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -563,7 +598,7 @@ namespace Civic.Core.Data
 				decimal.TryParse(_currentRow[i], out val);
 				return val;
 			}
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -581,7 +616,7 @@ namespace Civic.Core.Data
 				DateTime.TryParse(_currentRow[i], out val);
 				return val;
 			}
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -607,7 +642,7 @@ namespace Civic.Core.Data
 		{
 			if (i >= 0 && _currentRow != null && _currentRow.Count > i)
 				return string.IsNullOrEmpty(_currentRow[i]);
-			throw new Exception("No column for index position: " + i);
+			throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 		}
 
 		/// <summary>
@@ -618,7 +653,7 @@ namespace Civic.Core.Data
 		/// </returns>
 		/// <filterpriority>2</filterpriority>
 		public int FieldCount {
-			get { return _currentRow.Count; }
+			get { return _currentRow != null ? _currentRow.Count : Names.Count; }
 		}
 
 		/// <summary>
@@ -634,7 +669,7 @@ namespace Civic.Core.Data
 			{
 				if (i >= 0 && _currentRow != null && _currentRow.Count > i)
 					return string.IsNullOrEmpty(_currentRow[i]);
-				throw new Exception("No column for index position: " + i);
+				throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 			}
 		}
 
@@ -652,7 +687,7 @@ namespace Civic.Core.Data
 				var i = GetOrdinal(name);
 				if (i >= 0 && _currentRow != null && _currentRow.Count > i)
 					return string.IsNullOrEmpty(_currentRow[i]);
-				throw new Exception("No column for index position: " + i);
+				throw new Exception(string.Format("No column for index position {0} on line {1}", i, _lineCount));
 			}
 		}
 
@@ -694,7 +729,7 @@ namespace Civic.Core.Data
 		/// <returns>True if a record was successfuly read, otherwise false</returns>
 		public bool Read()
 		{
-			_fieldNames = null;
+			_currentRow = new List<string>();
 			string line = _streamReader.ReadLine();
 
 			if (line == null)
@@ -703,6 +738,7 @@ namespace Civic.Core.Data
 				return false;
 			}
 
+			_lineCount++;
 			parseLine(line);
 			return true;
 		}
@@ -741,10 +777,15 @@ namespace Civic.Core.Data
 		public bool HasHeaderRow { get; set; }
 
 		/// <summary>
-		/// Returns a collection of fields or null if no record has been read
+		/// Returns a collection of field values or null if no record has been read
 		/// </summary>
-		public List<string> Fields {
+		public List<string> Values {
 			get { return _currentRow; }
 		}
+
+		/// <summary>
+		/// Returns a collection of column names
+		/// </summary>
+		public List<string> Names { get; set; }
 	}
 }
