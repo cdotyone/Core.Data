@@ -16,8 +16,9 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
+using System.Linq;
 using System.Text;
-using System.Xml;
+using Civic.Core.Logging;
 
 #endregion References
 
@@ -31,15 +32,12 @@ namespace Civic.Core.Data
         #region Fields
 
         private static readonly Hashtable _paramcache = Hashtable.Synchronized(new Hashtable());
-        private int _sqldbReturnValue;
         private int _commandTimeout = 30;       // timout for commands
         private string _connectionString;       // connection string
         private string _dbcode = "NONE";        // database code assigned to connection string
-        private bool _getReturnValue;
-        private string _lastCommand = "";       // string of last executed command
+
         private readonly Dictionary<string, DbParameter> _paramDefault = new Dictionary<string, DbParameter>();
         private readonly List<string> _persistDefault = new List<string>();
-        private string _schemaName = "[DBO]";
         private SqlTransaction _transaction;    // open sql transaction
 
         #endregion Fields
@@ -103,302 +101,13 @@ namespace Civic.Core.Data
         public DbParameter[] DefaultParams
         {
             get {
-                var list = new List<DbParameter>();
-
-                foreach ( string key in _paramDefault.Keys )
-                    list.Add( _paramDefault[key] );
-
-                return list.ToArray();
-            }
-        }
-
-        /// <summary>
-        /// gets the last sql statement that was executed.
-        /// </summary>
-        public string LastSQL
-        {
-            get { return _lastCommand; }
-        }
-
-        /// <summary>
-        /// get/sets of if the query will have a return value
-        /// </summary>
-        public bool QueryReturnValue
-        {
-            get { return _getReturnValue; }
-            set { _getReturnValue = value; }
-        }
-
-        /// <summary>
-        /// the return value of the command
-        /// </summary>
-        public int ReturnValue
-        {
-            get { return _sqldbReturnValue; }
-            set { _sqldbReturnValue = value; }
-        }
-
-        /// <summary>
-        /// the default database schema prefix to be appended to the store procedure names
-        /// </summary>
-        public string Schema
-        {
-            get
-            {
-                return _schemaName;
-            }
-            set
-            {
-                _schemaName = value;
-                if (_schemaName.IndexOf('[') < 0) _schemaName = '[' + _schemaName + ']';
+                return _paramDefault.Keys.Select(key => _paramDefault[key]).ToArray();
             }
         }
 
         #endregion Properties
 
         #region Methods
-
-        /// <summary>
-        /// RStoJSON -- this converts a DataTable to the popular JSON format
-        /// </summary>
-        /// <param name="dataTable">The table to convert</param>
-        /// <param name="tableName">The name of the table in the JSON formated string.  
-        /// This allows you to append multiple tables together in the same string</param>
-        /// <returns>The JSON formated data</returns>
-        public static string RStoJSON(DataTable dataTable, string tableName)
-        {
-            var sb = new StringBuilder();
-
-            string[] keys = null;
-            try { keys = dataTable.Rows[0]["_keyname"].ToString().Split(','); }
-            catch { }
-
-            if (keys != null) sb.Append("[{'name': '" + tableName + "', 'data': {");
-            else sb.Append("[{'name': '" + tableName + "', 'data': [");
-            for (int r = 0; r < dataTable.Rows.Count; r++)
-            {
-                bool first = true;
-                if (r > 0) sb.Append(", ");
-                if (keys != null)
-                {
-                    sb.Append("'");
-                    for (int k = 0; k < keys.Length; k++)
-                    {
-                        if (k == 0) sb.Append(dataTable.Rows[r][keys[k]].ToString());
-                        else sb.Append("_" + dataTable.Rows[r][keys[k]]);
-                    }
-                    sb.Append("': ");
-                }
-                sb.Append("{");
-                for (int i = 0; i < dataTable.Columns.Count; i++)
-                {
-                    if (!(dataTable.Rows[r][i] is byte[]))
-                    {
-                        try
-                        {
-                            if (first) first = false;
-                            else sb.Append(", ");
-
-                            sb.Append("'" + dataTable.Columns[i].ColumnName.ToLower() + "': ");
-                            sb.Append("'" + dataTable.Rows[r][i].ToString().Replace("\r", "\\r").Replace("\n", "\\n").Replace("\\", "\\\\").Replace("'", "\'") + "'");
-                        }
-                        catch { }
-                    }
-                }
-                sb.Append("}");
-            }
-            sb.Append(keys != null ? "}}]" : "]}]");
-
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// RStoPORS -- Converts a table to a javascript light version of the recordset
-        /// This requires the use of:
-        ///     PORS_Script\poRSLib.js
-        ///     PORS_Script\prototype-1.5.0.js
-        /// They provide the javascript code that can convert the javascript generated
-        /// by this function to hashes and arrays
-        /// </summary>
-        /// <param name="dataTable">The table to convert</param>
-        /// <param name="tableName">The name of the table that this table will be stored under on the client browser</param>
-        /// <param name="keyName">Primary key name, used to find values in the object when it is transformed on client browser</param>
-        /// <param name="jsPrefix">The recieving object on the client browser</param>
-        /// <returns>a string that should be executed on the client browser</returns>
-        public static string RStoPORS(DataTable dataTable, string tableName, string keyName, string jsPrefix)
-        {
-            var sb = new StringBuilder();
-
-            sb.Append(jsPrefix + "RSfld('" + tableName + "',$A(['_tablename'" + (keyName != null ? ",'_keyname'" : ""));
-            for (int i = 0; i < dataTable.Columns.Count; i++)
-            {
-                string col = dataTable.Columns[i].ColumnName.ToLower();
-                if (col != "_tablename" && col != "_keyname")
-                    sb.Append(",'" + col + "'");
-            }
-            sb.AppendLine("]));");
-
-            for (int r = 0; r < dataTable.Rows.Count; r++)
-            {
-                sb.Append(jsPrefix + "RS($A(['" + tableName + "'" + (keyName != null ? ",'" + keyName + "'" : ""));
-                for (int i = 0; i < dataTable.Columns.Count; i++)
-                {
-                    string col = dataTable.Columns[i].ColumnName.ToLower();
-                    if (col != "_tablename" && col != "_keyname")
-                    {
-                        if (!(dataTable.Rows[r][i] is byte[]))
-                        {
-                            try
-                            {
-                                sb.Append(",'" + dataTable.Rows[r][i].ToString().Replace("\r", "\\r").Replace("\n", "\\n").Replace("\\", "\\\\").Replace("'", "\\'") + "'");
-                            }
-                            catch { }
-                        }
-                    }
-                }
-                sb.AppendLine("]));");
-            }
-
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// RStoXML -- converts a DataTable and addes it to a XmlDocument object
-        /// </summary>
-        /// <param name="parentNode">The xml node to attach this data table to.</param>
-        /// <param name="dataTable">The table to convert</param>
-        /// <param name="tableName">The name of the table to use when created XML nodes</param>
-        /// <param name="nameSpace">The name space to use</param>
-        /// <param name="nameSpaceURI">The name space URL to use</param>
-        /// <returns>Parent XML Node that now contains the data table</returns>
-        public static XmlNode RStoXML(XmlNode parentNode, DataTable dataTable, string tableName, string nameSpace, string nameSpaceURI)
-        {
-            XmlDocument xdoc = parentNode.OwnerDocument;
-            if (xdoc != null)
-            {
-                XmlNode rnode = xdoc.CreateNode(XmlNodeType.Element, nameSpace, tableName.ToUpper() + "S", nameSpaceURI);
-                parentNode.AppendChild(rnode);
-
-                for (int r = 0; r < dataTable.Rows.Count; r++)
-                {
-                    XmlNode node = xdoc.CreateNode(XmlNodeType.Element, nameSpace, tableName.ToUpper(), nameSpaceURI);
-
-                    for (int i = 0; i < dataTable.Columns.Count; i++)
-                    {
-                        if (!(dataTable.Rows[r][i] is byte[]))
-                        {
-                            try
-                            {
-                                var xattr = (XmlAttribute)xdoc.CreateNode(XmlNodeType.Attribute, dataTable.Columns[i].ColumnName.ToUpper(), null);
-                                xattr.Value = dataTable.Rows[r][i].ToString();
-                                if (node.Attributes != null) node.Attributes.Append(xattr);
-                            }
-                            catch { }
-                        }
-                    }
-
-                    rnode.AppendChild(node);
-                }
-            }
-
-            return parentNode;
-        }
-
-        /// <summary>
-        /// RStoXML -- converts a DataTable and addes it to a XmlDocument object
-        /// </summary>
-        /// <param name="parentNode">The xml node to attach this data table to.</param>
-        /// <param name="dataTable">The table to convert</param>
-        /// <param name="tableName">The name of the table to use when created XML nodes</param>
-        /// <returns>Parent XML Node that now contains the data table</returns>
-        public static XmlNode RStoXML(XmlNode parentNode, DataTable dataTable, string tableName)
-        {
-            return RStoXML(parentNode, dataTable, tableName, null, null);
-        }
-
-        /// <summary>
-        /// RStoXML -- converts a DataTable and addes it to a XmlDocument object
-        /// </summary>
-        /// <param name="parentNode">The xml node to attach this data table to.</param>
-        /// <param name="dataTable">The table to convert</param>
-        /// <returns>Parent XML Node that now contains the data table</returns>
-        public static XmlNode RStoXML(XmlNode parentNode, DataTable dataTable)
-        {
-            return RStoXML(parentNode, dataTable, string.IsNullOrEmpty(dataTable.TableName) ? "TABLE" : dataTable.TableName, null, null);
-        }
-
-        /// <summary>
-        /// RStoXML -- converts a DataTable and addes it to a XmlDocument object
-        /// </summary>
-        /// <param name="parentName">The xml node to attach this data table to.</param>
-        /// <param name="dataTable">The table to convert</param>
-        /// <param name="tableName">The name of the table to use when created XML nodes</param>
-        /// <param name="nameSpace">The name space to use</param>
-        /// <param name="nameSpaceURI">The name space URL to use</param>
-        /// <returns>Parent XML Node that now contains the data table</returns>
-        public static XmlNode RStoXML(string parentName, DataTable dataTable, string tableName, string nameSpace, string nameSpaceURI)
-        {
-            var xdoc = new XmlDocument();
-            XmlNode xroot = xdoc.AppendChild(xdoc.CreateElement(parentName));
-            return RStoXML(xroot, dataTable, tableName, nameSpace, nameSpaceURI);
-        }
-
-        /// <summary>
-        /// RStoXML -- converts a DataTable and addes it to a XmlDocument object
-        /// </summary>
-        /// <param name="parentName">The name of the parent node to create</param>
-        /// <param name="dataTable">The table to convert</param>
-        /// <param name="tableName">The name of the table to use when created XML nodes</param>
-        /// <returns>Parent XML Node that now contains the data table</returns>
-        public static XmlNode RStoXML(string parentName, DataTable dataTable, string tableName)
-        {
-            return RStoXML(parentName, dataTable, tableName, null, null);
-        }
-
-        /// <summary>
-        /// RStoXML -- converts a DataTable and addes it to a XmlDocument object
-        /// </summary>
-        /// <param name="parentName">The name of the parent node to create</param>
-        /// <param name="dataTable">The table to convert</param>
-        /// <returns>Parent XML Node that now contains the data table</returns>
-        public static XmlNode RStoXML(string parentName, DataTable dataTable)
-        {
-            return RStoXML(parentName, dataTable, string.IsNullOrEmpty(dataTable.TableName) ? "TABLE" : dataTable.TableName, null, null);
-        }
-
-        /// <summary>
-        /// RStoXML -- converts a DataTable and addes it to a XmlDocument object
-        /// </summary>
-        /// <param name="dataTable">The table to convert</param>
-        /// <param name="tableName">The name of the table to use when created XML nodes</param>
-        /// <param name="nameSpace">The name space to use</param>
-        /// <param name="nameSpaceURI">The name space URL to use</param>
-        /// <returns>Parent XML Node that now contains the data table</returns>
-        public static XmlNode RStoXML(DataTable dataTable, string tableName, string nameSpace, string nameSpaceURI)
-        {
-            return RStoXML("DATA", dataTable, tableName, nameSpace, nameSpaceURI);
-        }
-
-        /// <summary>
-        /// RStoXML -- converts a DataTable and addes it to a XmlDocument object
-        /// </summary>
-        /// <param name="dataTable">The table to convert</param>
-        /// <param name="tableName">The name of the table to use when created XML nodes</param>
-        /// <returns>Parent XML Node that now contains the data table</returns>
-        public static XmlNode RStoXML(DataTable dataTable, string tableName)
-        {
-            return RStoXML("DATA", dataTable, tableName, null, null);
-        }
-
-        /// <summary>
-        /// RStoXML -- converts a DataTable and addes it to a XmlDocument object
-        /// </summary>
-        /// <param name="dataTable">The table to convert</param>
-        /// <returns>Parent XML Node that now contains the data table</returns>
-        public static XmlNode RStoXML(DataTable dataTable)
-        {
-            return RStoXML("DATA", dataTable, string.IsNullOrEmpty(dataTable.TableName) ? "TABLE" : dataTable.TableName, null, null);
-        }
 
         public void AddDefaultParameter( DbParameter param, bool canBeCached )
         {
@@ -437,7 +146,6 @@ namespace Civic.Core.Data
                     newConn.AddDefaultParameter( _paramDefault[key], true );
             }
 
-            newConn._schemaName = _schemaName;
             newConn._dbcode = _dbcode;
             newConn._connectionString = _connectionString;
             newConn._connectionString = _connectionString;
@@ -480,89 +188,51 @@ namespace Civic.Core.Data
             return CreateParameter(name, ParameterDirection.Input, value);
         }
 
-        public IDBCommand CreateStoredProcCommand(string procName)
-        {
-            return new DBCommand(this, procName);
-        }
-
-        public int ExecuteCommand( string commandText, params object[] parameterValues )
-        {
-            //create a command and prepare it for execution
-            var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
-
-            if ( _transaction != null ) { cmd.Connection = _transaction.Connection; cmd.Transaction = _transaction; }
-            else cmd.Connection = new SqlConnection( _connectionString );
-            cmd.Connection.Open();
-
-            cmd.CommandType = CommandType.Text;
-            cmd.CommandText = commandText;
-
-            foreach ( object obj in parameterValues )
-            {
-                if ( obj is DbParameter )
-                {
-                    var param = (DbParameter)obj;
-                    cmd.Parameters.AddWithValue( param.ParameterName.Replace( "@", "" ), param.Value );
-                }
-                else
-                {
-                    cmd.Parameters.Add( parameterValues );
-                }
-            }
-
-            int retval = cmd.ExecuteNonQuery();
-
-            if ( _transaction == null ) cmd.Connection.Close();
-            if ( _getReturnValue ) _sqldbReturnValue = (int)cmd.Parameters[0].Value;
-
-            // detach the SqlParameters from the command object, so they can be used again.
-            cmd.Parameters.Clear();
-            return retval;
-        }
-
         /// <summary>
-        /// Execute a stored procedure via a SqlCommand (that returns a resultset) against the database specified in 
-        /// the connection string using the provided parameter values.  This method will query the database to discover the parameters for the 
-        /// stored procedure (the first time each stored procedure is called), and assign the values based on parameter order.
+        /// Creates a return parameter for this database
         /// </summary>
-        /// <remarks>
-        /// This method provides no access to output parameters or the stored procedure's return value parameter.
-        /// 
-        /// e.g.:  
-        ///  DataSet ds = ExecuteDataset("GetOrders", 24, 36);
-        /// </remarks>
-        /// <param name="spName">the name of the stored procedure</param>
-        /// <param name="parameterValues">an array of objects to be assigned as the input values of the stored procedure</param>
-        /// <returns>a dataset containing the resultset generated by the command</returns>
-        public DataSet ExecuteDataset(string spName, params object[] parameterValues)
+        /// <returns>a DbParameter representing the requested parameter</returns>
+        public DbParameter CreateReturnParameter()
         {
-            //create a command and prepare it for execution
-            var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
+            return new SqlParameter("@RETURN_VALUE", 0) {Direction = ParameterDirection.ReturnValue};        }
 
-            if (_transaction != null) { cmd.Connection = _transaction.Connection; cmd.Transaction = _transaction; }
-            else cmd.Connection = new SqlConnection(_connectionString);
-
-            //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-            SqlParameter[] commandParameters = getSpParameters(spName);
-
-            //assign the provided values to these parameters based on parameter order
-            prepareCommand(cmd, CommandType.StoredProcedure, spName, commandParameters, parameterValues);
-
-            //create the DataAdapter & DataSet
-            var da = new SqlDataAdapter(cmd);
-            var ds = new DataSet();
-
-            //fill the DataSet using default values for DataTable names, etc.
-            da.Fill(ds);
-
-            if (_transaction == null) cmd.Connection.Close();
-            if (_getReturnValue) _sqldbReturnValue = (int)cmd.Parameters[0].Value;
-
-            // detach the SqlParameters from the command object, so they can be used again.
-            cmd.Parameters.Clear();
-
-            return ds;
+        public IDBCommand CreateStoredProcCommand(string schemaName, string procName)
+        {
+            return new DBCommand(this, schemaName, procName);
         }
+
+        //public int ExecuteCommand( string commandText, params object[] parameterValues )
+        //{
+        //    //create a command and prepare it for execution
+        //    var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
+
+        //    if ( _transaction != null ) { cmd.Connection = _transaction.Connection; cmd.Transaction = _transaction; }
+        //    else cmd.Connection = new SqlConnection( _connectionString );
+        //    cmd.Connection.Open();
+
+        //    cmd.CommandType = CommandType.Text;
+        //    cmd.CommandText = commandText;
+
+        //    foreach ( object obj in parameterValues )
+        //    {
+        //        if ( obj is DbParameter )
+        //        {
+        //            var param = (DbParameter)obj;
+        //            cmd.Parameters.AddWithValue( param.ParameterName.Replace( "@", "" ), param.Value );
+        //        }
+        //        else
+        //        {
+        //            cmd.Parameters.Add( parameterValues );
+        //        }
+        //    }
+
+        //    int retval = cmd.ExecuteNonQuery();
+
+        //    if ( _transaction == null ) cmd.Connection.Close();
+        //    if ( _getReturnValue ) _sqldbReturnValue = (int)cmd.Parameters[0].Value;
+
+        //    return retval;
+        //}
 
         /// <summary>
         /// Execute a stored procedure via a SqlCommand (that returns no resultset) against the database specified in 
@@ -575,30 +245,54 @@ namespace Civic.Core.Data
         /// e.g.:  
         ///  int result = ExecuteNonQuery(connString, "PublishOrders", 24, 36);
         /// </remarks>
+        /// <param name="schemaName">The schema the store procedure belongs to</param>
         /// <param name="spName">the name of the stored prcedure</param>
         /// <param name="parameterValues">an array of objects to be assigned as the input values of the stored procedure</param>
-        /// <returns>an int representing the number of rows affected by the command</returns>
-        public int ExecuteNonQuery(string spName, params object[] parameterValues)
+        /// <returns>an int representing the number of rows affected by the command, returns -1 when there is an error</returns>
+        public int ExecuteNonQuery(string schemaName, string spName, params object[] parameterValues)
         {
             //create a command and prepare it for execution
             var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
+            var lastSql = string.Empty;
+            int retval = -1;
 
-            if (_transaction != null) { cmd.Connection = _transaction.Connection; cmd.Transaction = _transaction; }
-            else cmd.Connection = new SqlConnection(_connectionString);
+            try
+            {
+                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", schemaName, spName))
+                {
 
-            //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-            SqlParameter[] commandParameters = getSpParameters(spName);
+                    if (_transaction != null)
+                    {
+                        cmd.Connection = _transaction.Connection;
+                        cmd.Transaction = _transaction;
+                    }
+                    else cmd.Connection = new SqlConnection(_connectionString);
 
-            //assign the provided values to these parameters based on parameter order
-            prepareCommand(cmd, CommandType.StoredProcedure, spName, commandParameters, parameterValues);
+                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                    var commandParameters = new List<SqlParameter>(getSpParameters(schemaName, spName))
+                        {
+                            new SqlParameter("@RETURN_VALUE", 0) {Direction = ParameterDirection.ReturnValue}
+                        };
 
-            int retval = cmd.ExecuteNonQuery();
+                    //assign the provided values to these parameters based on parameter order
+                    lastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters.ToArray(),parameterValues);
+                    commandParameters.Clear();
+                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteNonQuery Called:\n{0}", lastSql);
 
-            if (_transaction == null) cmd.Connection.Close();
-            if (_getReturnValue) _sqldbReturnValue = (int)cmd.Parameters[0].Value;
+                    retval = cmd.ExecuteNonQuery();
 
-            // detach the SqlParameters from the command object, so they can be used again.
-            cmd.Parameters.Clear();
+                    if (_transaction == null) cmd.Connection.Close();
+
+                    return retval;
+                }
+            }
+            catch (SqlException ex)
+            {
+                cmd.Connection = null;
+                if (Logger.HandleException(LoggingBoundaries.Database, ex))
+                    throw new SqlDBException(ex, cmd, lastSql);
+            }
+
             return retval;
         }
 
@@ -613,33 +307,47 @@ namespace Civic.Core.Data
         /// e.g.:  
         ///  SqlDataReader dr = ExecuteReader("GetOrders", 24, 36);
         /// </remarks>
+        /// <param name="schemaName">The schema the store procedure belongs to</param>
         /// <param name="spName">the name of the stored procedure</param>
         /// <param name="parameterValues">an array of objects to be assigned as the input values of the stored procedure</param>
         /// <returns>a dataset containing the resultset generated by the command</returns>
-        public IDataReader ExecuteReader(string spName, params object[] parameterValues)
+        public IDataReader ExecuteReader(string schemaName, string spName, params object[] parameterValues)
         {
             //create a command and prepare it for execution
-            var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
+            var cmd = new SqlCommand { CommandTimeout = CommandTimeout };
+            var lastSql = string.Empty;
 
-            if (_transaction != null) { cmd.Connection = _transaction.Connection; cmd.Transaction = _transaction; }
-            else cmd.Connection = new SqlConnection(_connectionString);
+            try
+            {
+                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", schemaName, spName))
+                {
+                    if (_transaction != null)
+                    {
+                        cmd.Connection = _transaction.Connection;
+                        cmd.Transaction = _transaction;
+                    }
+                    else cmd.Connection = new SqlConnection(_connectionString);
 
-            //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-            SqlParameter[] commandParameters = getSpParameters(spName);
+                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                    SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
 
-            //assign the provided values to these parameters based on parameter order
-            prepareCommand(cmd, CommandType.StoredProcedure, spName, commandParameters, parameterValues);
+                    //assign the provided values to these parameters based on parameter order
+                    lastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
+                    Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", lastSql);
 
-            //create a reader
+                    // call ExecuteReader with the appropriate CommandBehavior
+                    SqlDataReader dr = _transaction != null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
 
-            // call ExecuteReader with the appropriate CommandBehavior
-            SqlDataReader dr = _transaction != null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
-            if (_getReturnValue) _sqldbReturnValue = (int)cmd.Parameters[0].Value;
-
-            // detach the SqlParameters from the command object, so they can be used again.
-            cmd.Parameters.Clear();
-
-            return dr;
+                    return dr;
+                }
+            }
+            catch (SqlException ex)
+            {
+                cmd.Connection = null;
+                if(Logger.HandleException(LoggingBoundaries.Database, ex))
+                    throw new SqlDBException(ex, cmd, lastSql);
+            }
+            return null;
         }
 
         /// <summary>
@@ -653,36 +361,50 @@ namespace Civic.Core.Data
         /// e.g.:  
         ///  int orderCount = (int)ExecuteScalar(connString, "GetOrderCount", 24, 36);
         /// </remarks>
+        /// <param name="schemaName">The schema the store procedure belongs to</param>
         /// <param name="spName">the name of the stored procedure</param>
         /// <param name="parameterValues">an array of objects to be assigned as the input values of the stored procedure</param>
         /// <returns>an object containing the value in the 1x1 resultset generated by the command</returns>
-        public object ExecuteScalar(string spName, params object[] parameterValues)
+        public object ExecuteScalar(string schemaName, string spName, params object[] parameterValues)
         {
             //create a command and prepare it for execution
             var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
+            var lastSql = string.Empty;
 
-            if (_transaction != null) { cmd.Connection = _transaction.Connection; cmd.Transaction = _transaction; }
-            else cmd.Connection = new SqlConnection(_connectionString);
+            try
+            {
+                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteScalar", schemaName, spName))
+                {
 
-            //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-            SqlParameter[] commandParameters = getSpParameters(spName);
+                    if (_transaction != null)
+                    {
+                        cmd.Connection = _transaction.Connection;
+                        cmd.Transaction = _transaction;
+                    }
+                    else cmd.Connection = new SqlConnection(_connectionString);
 
-            //assign the provided values to these parameters based on parameter order
-            prepareCommand(cmd, CommandType.StoredProcedure, spName, commandParameters, parameterValues);
+                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                    SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
 
-            //execute the command & return the results
-            object retval = cmd.ExecuteScalar();
+                    //assign the provided values to these parameters based on parameter order
+                    lastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
 
-            // detach the SqlParameters from the command object, so they can be used again.
-            cmd.Parameters.Clear();
+                    //execute the command & return the results
+                    object retval = cmd.ExecuteScalar();
+                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteScalar Called:\n{0}", lastSql);
 
-            if (_transaction == null) cmd.Connection.Close();
-            if (_getReturnValue) _sqldbReturnValue = (int)cmd.Parameters[0].Value;
+                    if (_transaction == null) cmd.Connection.Close();
 
-            // detach the SqlParameters from the command object, so they can be used again.
-            cmd.Parameters.Clear();
-
-            return retval;
+                    return retval;
+                }
+            }
+            catch (SqlException ex)
+            {
+                cmd.Connection = null;
+                if (Logger.HandleException(LoggingBoundaries.Database, ex))
+                    throw new SqlDBException(ex, cmd, lastSql);
+            }
+            return null;
         }
 
         /// <summary>
@@ -696,73 +418,48 @@ namespace Civic.Core.Data
         /// e.g.:  
         ///  SqlDataReader dr = ExecuteReader("GetOrders", 24, 36);
         /// </remarks>
+        /// <param name="schemaName">The schema the store procedure belongs to</param>
         /// <param name="spName">the name of the stored procedure</param>
         /// <param name="parameterValues">an array of objects to be assigned as the input values of the stored procedure</param>
         /// <returns>a dataset containing the resultset generated by the command</returns>
-        public IDataReader ExecuteSequentialReader(string spName, params object[] parameterValues)
+        public IDataReader ExecuteSequentialReader(string schemaName, string spName, params object[] parameterValues)
         {
             //create a command and prepare it for execution
             var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
+            var lastSql = string.Empty;
 
-            if (_transaction != null) { cmd.Connection = _transaction.Connection; cmd.Transaction = _transaction; }
-            else cmd.Connection = new SqlConnection(_connectionString);
-
-            //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-            SqlParameter[] commandParameters = getSpParameters(spName);
-
-            //assign the provided values to these parameters based on parameter order
-            prepareCommand(cmd, CommandType.StoredProcedure, spName, commandParameters, parameterValues);
-
-            //create a reader
-
-            // call ExecuteReader with the appropriate CommandBehavior
-            SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
-            if (_getReturnValue) _sqldbReturnValue = (int)cmd.Parameters[0].Value;
-
-            // detach the SqlParameters from the command object, so they can be used again.
-            cmd.Parameters.Clear();
-
-            return dr;
-        }
-
-        public void FillDataset(string spName, DataSet dataSet, string[] tableNames, params object[] parameterValues)
-        {
-            //create a command and prepare it for execution
-            var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
-
-            if (_transaction != null) { cmd.Connection = _transaction.Connection; cmd.Transaction = _transaction; }
-            else cmd.Connection = new SqlConnection(_connectionString);
-
-            //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-            SqlParameter[] commandParameters = getSpParameters(spName);
-
-            //assign the provided values to these parameters based on parameter order
-            prepareCommand(cmd, CommandType.StoredProcedure, spName, commandParameters, parameterValues);
-
-            using (var dataAdapter = new SqlDataAdapter(cmd))
+            try
             {
-
-                // Add the table mappings specified by the user
-                if (tableNames != null && tableNames.Length > 0)
+                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteSequentialReader", schemaName, spName))
                 {
-                    string tableName = "Table";
-                    for (int index = 0; index < tableNames.Length; index++)
+
+                    if (_transaction != null)
                     {
-                        if (string.IsNullOrEmpty(tableNames[index])) throw new ArgumentException("The tableNames parameter must contain a list of tables, a value was provided as null or empty string.", "tableNames");
-                        dataAdapter.TableMappings.Add(tableName, tableNames[index]);
-                        tableName = "Table" + (index + 1);
+                        cmd.Connection = _transaction.Connection;
+                        cmd.Transaction = _transaction;
                     }
+                    else cmd.Connection = new SqlConnection(_connectionString);
+
+                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                    SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
+
+                    //assign the provided values to these parameters based on parameter order
+                    lastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
+
+                    // call ExecuteReader with the appropriate CommandBehavior
+                    SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteSequentialReader Called:\n{0}", lastSql);
+
+                    return dr;
                 }
-
-                // Fill the DataSet using default values for DataTable names, etc
-                dataAdapter.Fill(dataSet);
             }
-
-            if (_transaction == null) cmd.Connection.Close();
-            if (_getReturnValue) _sqldbReturnValue = (int)cmd.Parameters[0].Value;
-
-            // detach the SqlParameters from the command object, so they can be used again.
-            cmd.Parameters.Clear();
+            catch (SqlException ex)
+            {
+                cmd.Connection = null;
+                if (Logger.HandleException(LoggingBoundaries.Database, ex))
+                    throw new SqlDBException(ex, cmd, lastSql);
+            }
+            return null;
         }
 
         /// <summary>
@@ -858,13 +555,6 @@ namespace Civic.Core.Data
         /// <param name="parameterValues">array of objects holding the values to be assigned</param>
         private void assignParameterValues(SqlCommand command, SqlParameter[] commandParameters, object[] parameterValues)
         {
-            if (_getReturnValue)
-            {
-                _sqldbReturnValue = 0;
-                var param = new SqlParameter("@RETURN_VALUE", 0) {Direction = ParameterDirection.ReturnValue};
-                command.Parameters.Add(param);
-            }
-
             if (commandParameters == null)
             {
                 //do nothing if we get no data
@@ -934,10 +624,10 @@ namespace Civic.Core.Data
         /// <returns></returns>
         private SqlParameter[] cloneParameters(SqlParameterCollection originalParameters)
         {
-            var clonedParameters = new SqlParameter[_getReturnValue ? originalParameters.Count : (originalParameters.Count - 1)];
+            var clonedParameters = new SqlParameter[originalParameters.Count - 1];
 
             int cnt = originalParameters.Count;
-            for (int i = (_getReturnValue ? 0 : 1), j = 0; i < cnt; i++)
+            for (int i = 1, j = 0; i < cnt; i++)
             {
                 clonedParameters[j++] = _cloneParameter(originalParameters[i], false);
             }
@@ -948,16 +638,17 @@ namespace Civic.Core.Data
         /// <summary>
         /// Resolve at run time the appropriate set of SqlParameters for a stored procedure
         /// </summary>
+        /// <param name="schemaName">the schema the stored procedure belongs to</param>
         /// <param name="spName">The name of the stored procedure</param>
         /// <returns>The parameter collection discovered.</returns>
-        private SqlParameterCollection discoverSpParameterSet(string spName)
+        private SqlParameterCollection discoverSpParameterSet(string schemaName, string spName)
         {
             if (string.IsNullOrEmpty(spName)) throw new ArgumentNullException("spName");
 
             var connection = new SqlConnection(_connectionString);
 
             string[] parts = spName.Split('.');
-            if ( parts.Length < 2 ) parts = new [] { _schemaName, spName };
+            if ( parts.Length < 2 ) parts = new [] { schemaName, spName };
             if ( parts[1].IndexOf( '[' ) < 0 ) parts[1] = '[' + parts[1] + ']';
             spName = parts[0] + '.' + parts[1];
 
@@ -973,9 +664,10 @@ namespace Civic.Core.Data
         /// <summary>
         /// Retrieves the set of SqlParameters appropriate for the stored procedure
         /// </summary>
+        /// <param name="schemaName">the schema the store procedure belongs to</param>
         /// <param name="spName">The name of the stored procedure</param>
         /// <returns>An array of SqlParameters</returns>
-        private SqlParameter[] getSpParameters(string spName)
+        private SqlParameter[] getSpParameters(string schemaName, string spName)
         {
             if (string.IsNullOrEmpty(spName)) throw new ArgumentNullException("spName");
 
@@ -984,7 +676,7 @@ namespace Civic.Core.Data
             var cachedParameters = (SqlParameterCollection)_paramcache[key];
             if (cachedParameters == null)
             {
-                SqlParameterCollection spParameters = discoverSpParameterSet(spName);
+                SqlParameterCollection spParameters = discoverSpParameterSet(schemaName, spName);
                 _paramcache[key] = spParameters;
                 cachedParameters = spParameters;
             }
@@ -998,10 +690,12 @@ namespace Civic.Core.Data
         /// </summary>
         /// <param name="command">the SqlCommand to be prepared</param>
         /// <param name="commandType">the CommandType (stored procedure, text, etc.)</param>
+        /// <param name="schemaName">the scehma name of the store procedure etc</param>
         /// <param name="commandText">the stored procedure name or T-SQL command</param>
         /// <param name="commandParameters">an array of SqlParameters to be associated with the command or 'null' if no parameters are required</param>
         /// <param name="parameterValues">an array of sqlparameter values to assign to the commandParameters</param>
-        private void prepareCommand(SqlCommand command, CommandType commandType, string commandText, SqlParameter[] commandParameters, object[] parameterValues)
+        /// <returns>the last command executed</returns>
+        private string prepareCommand(SqlCommand command, CommandType commandType, string schemaName, string commandText, SqlParameter[] commandParameters, object[] parameterValues)
         {
             //if we were provided a transaction, assign it.
             if (_transaction != null)
@@ -1018,7 +712,7 @@ namespace Civic.Core.Data
 
             //set the command text (stored procedure name or SQL statement)
             string[] parts = commandText.Split( '.' );
-            if ( parts.Length < 2 ) parts = new [] { _schemaName, commandText };
+            if (parts.Length < 2) parts = new[] { schemaName, commandText };
             if ( parts[1].IndexOf( '[' ) < 0 ) parts[1] = '[' + parts[1] + ']';
             command.CommandText = parts[0] + '.' + parts[1];
 
@@ -1052,7 +746,7 @@ namespace Civic.Core.Data
                 i++;
             }
 
-            _lastCommand = sb.ToString();
+            return sb.ToString();
         }
 
         #endregion Methods

@@ -151,6 +151,7 @@
     </Compile>
     <Compile Include="Crypt.cs" />
     <Compile Include="IDBConnection.cs" />
+    <Compile Include="SqlDBException.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="dev_keys.xml" />
