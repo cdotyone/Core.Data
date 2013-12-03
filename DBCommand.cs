@@ -116,7 +116,7 @@ namespace Civic.Core.Data
         /// <param name="value"><para>The value of the parameter.</para></param>      
         public void AddOutParameter(string name, object value)
         {
-            AddParameter(name, ParameterDirection.Output, value);
+            AddParameter(name, ParameterDirection.InputOutput, value);
         }
 
         /// <summary>
