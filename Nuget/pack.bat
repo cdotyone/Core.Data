@@ -2,7 +2,7 @@ cd %2
 echo %2
 del  %2*.nupkg
 SET PATH=%4.nuget;%PATH%
-AssemblyVersionFinder.exe -s -d %4\references > tmpFile
+AssemblyVersionFinder.exe -s -n 3 -d %4\references > tmpFile
 set /p version=<tmpFile
 set nugetconfig=%4.nuget\nuget.config
 echo %nugetconfig%
