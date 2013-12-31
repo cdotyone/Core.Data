@@ -133,6 +133,7 @@ namespace Civic.Core.Data
         {
             if (_transaction != null) return;
             var connection = new SqlConnection(_connectionString);
+            connection.Open();
             _transaction = connection.BeginTransaction();
         }
 
