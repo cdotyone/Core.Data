@@ -1,16 +1,3 @@
-#region Copyright / Comments
-
-// <copyright file="Crypt.cs" company="Civic Engineering & IT">Copyright © Civic Engineering & IT 2013</copyright>
-// <author>Chris Doty</author>
-// <email>dotyc@civicinc.com</email>
-// <date>6/4/2013</date>
-// <summary>
-// derived from code written by Tiberius OsBurn
-// http://tiberi.us/view_article.aspx?article_id=20
-// </summary>
-
-#endregion Copyright / Comments
-
 #region References
 
 using System;
