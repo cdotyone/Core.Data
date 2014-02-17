@@ -112,5 +112,41 @@ namespace Civic.Core.Data
                 throw;
             }
         }
+
+
+        /// <summary>
+        /// Method for invoking a specified Database service object.  Reads service settings
+        /// from the given connection string.
+        /// </summary>
+        /// <example>
+        /// <code>    
+        /// Database dbSvc = DatabaseFactory.CreateDatabase("SQL_Customers");
+        /// </code>
+        /// </example>
+        /// <param name="ConnectionString">connection string for database service</param>
+        /// <returns>Database</returns>
+        /// <exception cref="System.Configuration.ConfigurationException">
+        /// <para>- or -</para>
+        /// <para>An error exists in the configuration.</para>
+        /// <para>- or -</para>
+        /// <para>An error occured while reading the string.</para>        
+        /// </exception>
+        /// <exception cref="System.Reflection.TargetInvocationException">
+        /// <para>The constructor being called throws an exception.</para>
+        /// </exception>
+        public static IDBConnection CreateDatabaseConnectionString(string connstring)
+        {
+            try
+            {
+                return new SqlDBConnection(connstring);
+            }
+            catch (ConfigurationErrorsException configurationException)
+            {
+                if (Logger.HandleException(LoggingBoundaries.DataLayer, configurationException))
+                    throw;
+
+                throw;
+            }
+        }
 	}
 }
