@@ -135,7 +135,7 @@ namespace Civic.Core.Data
         /// <para>The constructor being called throws an exception.</para>
         /// </exception>
         public static IDBConnection CreateDatabaseConnectionString(string connstring)
-        {
+        { 
             try
             {
                 return new SqlDBConnection(connstring);
