@@ -287,7 +287,7 @@ namespace Civic.Core.Data
                     return retval;
                 }
             }
-            catch (SqlException ex)
+            catch (Exception ex)
             {
                 cmd.Connection = null;
                 if (Logger.HandleException(LoggingBoundaries.Database, ex))
@@ -342,7 +342,7 @@ namespace Civic.Core.Data
                     return dr;
                 }
             }
-            catch (SqlException ex)
+            catch (Exception ex)
             {
                 cmd.Connection = null;
                 if(Logger.HandleException(LoggingBoundaries.Database, ex))
@@ -399,7 +399,7 @@ namespace Civic.Core.Data
                     return retval;
                 }
             }
-            catch (SqlException ex)
+            catch (Exception ex)
             {
                 cmd.Connection = null;
                 if (Logger.HandleException(LoggingBoundaries.Database, ex))
@@ -454,7 +454,7 @@ namespace Civic.Core.Data
                     return dr;
                 }
             }
-            catch (SqlException ex)
+            catch (Exception ex)
             {
                 cmd.Connection = null;
                 if (Logger.HandleException(LoggingBoundaries.Database, ex))
