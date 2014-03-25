@@ -290,8 +290,9 @@ namespace Civic.Core.Data
             catch (Exception ex)
             {
                 cmd.Connection = null;
-                if (Logger.HandleException(LoggingBoundaries.Database, ex))
-                    throw new SqlDBException(ex, cmd, lastSql);
+                var ex2 = new SqlDBException(ex, cmd, lastSql);
+                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                    throw ex2;
             }
 
             return retval;
@@ -345,8 +346,9 @@ namespace Civic.Core.Data
             catch (Exception ex)
             {
                 cmd.Connection = null;
-                if(Logger.HandleException(LoggingBoundaries.Database, ex))
-                    throw new SqlDBException(ex, cmd, lastSql);
+                var ex2 = new SqlDBException(ex, cmd, lastSql);
+                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                    throw ex2;
             }
             return null;
         }
@@ -402,8 +404,9 @@ namespace Civic.Core.Data
             catch (Exception ex)
             {
                 cmd.Connection = null;
-                if (Logger.HandleException(LoggingBoundaries.Database, ex))
-                    throw new SqlDBException(ex, cmd, lastSql);
+                var ex2 = new SqlDBException(ex, cmd, lastSql);
+                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                    throw ex2;
             }
             return null;
         }
@@ -457,8 +460,9 @@ namespace Civic.Core.Data
             catch (Exception ex)
             {
                 cmd.Connection = null;
-                if (Logger.HandleException(LoggingBoundaries.Database, ex))
-                    throw new SqlDBException(ex, cmd, lastSql);
+                var ex2 = new SqlDBException(ex, cmd, lastSql);
+                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                    throw ex2;
             }
             return null;
         }
