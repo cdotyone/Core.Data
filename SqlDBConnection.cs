@@ -202,38 +202,37 @@ namespace Civic.Core.Data
             return new DBCommand(this, schemaName, procName);
         }
 
-        //public int ExecuteCommand( string commandText, params object[] parameterValues )
-        //{
-        //    //create a command and prepare it for execution
-        //    var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
 
-        //    if ( _transaction != null ) { cmd.Connection = _transaction.Connection; cmd.Transaction = _transaction; }
-        //    else cmd.Connection = new SqlConnection( _connectionString );
-        //    cmd.Connection.Open();
+        public int ExecuteCommand(string commandText, params object[] parameterValues)
+        {
+            //create a command and prepare it for execution
+            var cmd = new SqlCommand { CommandTimeout = CommandTimeout };
 
-        //    cmd.CommandType = CommandType.Text;
-        //    cmd.CommandText = commandText;
+            if (_transaction != null) { cmd.Connection = _transaction.Connection; cmd.Transaction = _transaction; }
+            else cmd.Connection = new SqlConnection(_connectionString);
+            cmd.Connection.Open();
 
-        //    foreach ( object obj in parameterValues )
-        //    {
-        //        if ( obj is DbParameter )
-        //        {
-        //            var param = (DbParameter)obj;
-        //            cmd.Parameters.AddWithValue( param.ParameterName.Replace( "@", "" ), param.Value );
-        //        }
-        //        else
-        //        {
-        //            cmd.Parameters.Add( parameterValues );
-        //        }
-        //    }
+            cmd.CommandType = CommandType.Text;
+            cmd.CommandText = commandText;
 
-        //    int retval = cmd.ExecuteNonQuery();
+            foreach (object obj in parameterValues)
+            {
+                if (obj is DbParameter)
+                {
+                    var param = (DbParameter)obj;
+                    cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
+                }
+                else
+                {
+                    cmd.Parameters.Add(parameterValues);
+                }
+            }
 
-        //    if ( _transaction == null ) cmd.Connection.Close();
-        //    if ( _getReturnValue ) _sqldbReturnValue = (int)cmd.Parameters[0].Value;
+            int retval = cmd.ExecuteNonQuery();
+            if (_transaction == null) cmd.Connection.Close();
 
-        //    return retval;
-        //}
+            return retval;
+        }
 
         /// <summary>
         /// Execute a stored procedure via a SqlCommand (that returns no resultset) against the database specified in 
