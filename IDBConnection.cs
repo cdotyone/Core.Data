@@ -132,7 +132,14 @@ namespace Civic.Core.Data
         /// <returns>The command object for the requested stored procedure</returns>
         IDBCommand CreateStoredProcCommand(string schema, string procName);
 
-        //int ExecuteCommand(string commandText, params object[] parameterValues );
+
+        /// <summary>
+        /// Execute a parameritized command
+        /// </summary>
+        /// <param name="commandText">The command to execute</param>
+        /// <param name="parameterValues">The parameters for the query</param>
+        /// <returns># rows affected</returns>
+        int ExecuteCommand(string commandText, params object[] parameterValues );
 
         /// <summary>
         /// Execute a stored procedure via a SqlCommand (that returns no resultset) against the database specified in 
