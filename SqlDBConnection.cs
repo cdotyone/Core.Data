@@ -208,9 +208,17 @@ namespace Civic.Core.Data
             //create a command and prepare it for execution
             var cmd = new SqlCommand { CommandTimeout = CommandTimeout };
 
-            if (_transaction != null) { cmd.Connection = _transaction.Connection; cmd.Transaction = _transaction; }
-            else cmd.Connection = new SqlConnection(_connectionString);
-            cmd.Connection.Open();
+
+            if (_transaction != null)
+            {
+                cmd.Connection = _transaction.Connection;
+                cmd.Transaction = _transaction;
+            }
+            else
+            {
+                cmd.Connection = new SqlConnection(_connectionString);
+                cmd.Connection.Open();
+            }
 
             cmd.CommandType = CommandType.Text;
             cmd.CommandText = commandText;
