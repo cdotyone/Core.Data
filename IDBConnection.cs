@@ -41,6 +41,15 @@ namespace Civic.Core.Data
         }
 
         /// <summary>
+        /// get/sets if the connection should be closed after a command executes, ignored if transaction is in place
+        /// </summary>
+        bool AutoClose
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
         /// get/sets the short code for the database connection
         /// </summary>
         string DBCode

@@ -39,6 +39,7 @@ namespace Civic.Core.Data
         private readonly Dictionary<string, DbParameter> _paramDefault = new Dictionary<string, DbParameter>();
         private readonly List<string> _persistDefault = new List<string>();
         private SqlTransaction _transaction;    // open sql transaction
+        private bool _autoClose = true;         // auto close the connection when command terminates
 
         #endregion Fields
 
@@ -84,6 +85,15 @@ namespace Civic.Core.Data
             {
                 _connectionString = value;
             }
+        }
+
+        /// <summary>
+        /// get/set if the connection should be closed after a command executes, ignored if transaction is in place
+        /// </summary>
+        public bool AutoClose
+        {
+            get { return _autoClose; }
+            set { _autoClose = value; }
         }
 
         /// <summary>
@@ -195,7 +205,8 @@ namespace Civic.Core.Data
         /// <returns>a DbParameter representing the requested parameter</returns>
         public DbParameter CreateReturnParameter()
         {
-            return new SqlParameter("@RETURN_VALUE", 0) {Direction = ParameterDirection.ReturnValue};        }
+            return new SqlParameter("@RETURN_VALUE", 0) {Direction = ParameterDirection.ReturnValue};
+        }
 
         public IDBCommand CreateStoredProcCommand(string schemaName, string procName)
         {
@@ -237,7 +248,7 @@ namespace Civic.Core.Data
             }
 
             int retval = cmd.ExecuteNonQuery();
-            if (_transaction == null) cmd.Connection.Close();
+            if (_transaction == null && _autoClose) cmd.Connection.Close();
 
             return retval;
         }
@@ -289,7 +300,7 @@ namespace Civic.Core.Data
 
                     retval = cmd.ExecuteNonQuery();
 
-                    if (_transaction == null) cmd.Connection.Close();
+                    if (_transaction == null && _autoClose) cmd.Connection.Close();
 
                     return retval;
                 }
@@ -403,7 +414,7 @@ namespace Civic.Core.Data
                     object retval = cmd.ExecuteScalar();
                     Logger.LogTrace(LoggingBoundaries.Database, "ExecuteScalar Called:\n{0}", lastSql);
 
-                    if (_transaction == null) cmd.Connection.Close();
+                    if (_transaction == null && _autoClose) cmd.Connection.Close();
 
                     return retval;
                 }

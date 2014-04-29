@@ -136,6 +136,14 @@ namespace Civic.Core.Data
             _params.Add(_dbconn.CreateParameter(name, direction, value));
         }
 
+        /// <summary>
+        /// Clears all of the parameters.  Useful when needing to reuse a command
+        /// </summary>
+        public void ClearParameters()
+        {
+            _params.Clear();
+        }
+
         public void Dispose()
         {
         }

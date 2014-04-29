@@ -63,6 +63,11 @@ namespace Civic.Core.Data
         void AddInParameter(string name, object value);
 
         /// <summary>
+        /// Clears all of the parameters.  Useful when needing to reuse a command
+        /// </summary>
+        void ClearParameters();
+
+        /// <summary>
         /// Adds a new Out DbParameter object to the given command.
         /// </summary>
         /// <param name="name"><para>The name of the parameter.</para></param>
