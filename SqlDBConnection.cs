@@ -39,7 +39,9 @@ namespace Civic.Core.Data
         private readonly Dictionary<string, DbParameter> _paramDefault = new Dictionary<string, DbParameter>();
         private readonly List<string> _persistDefault = new List<string>();
         private SqlTransaction _transaction;    // open sql transaction
+        
         private bool _autoClose = true;         // auto close the connection when command terminates
+        private SqlConnection _connection;      // sql connection if there is one
 
         #endregion Fields
 
@@ -164,12 +166,25 @@ namespace Civic.Core.Data
             return newConn;
         }
 
+        /// <summary>
+        /// Commit the transaction
+        /// </summary>
         public void Commit()
         {
             if (_transaction != null)
                 _transaction.Commit();
             else throw new Exception("commit without begin transaction");
             _transaction = null;
+        }
+
+        /// <summary>
+        /// Close the connection if not already closed
+        /// </summary>
+        public void Close()
+        {
+            if(_connection!=null && _connection.State!=ConnectionState.Closed && _connection.State!=ConnectionState.Broken)
+                _connection.Close();
+            _connection = null;
         }
 
         /// <summary>
@@ -227,8 +242,9 @@ namespace Civic.Core.Data
             }
             else
             {
-                cmd.Connection = new SqlConnection(_connectionString);
-                cmd.Connection.Open();
+                if(_connection==null) _connection = new SqlConnection(_connectionString);
+                cmd.Connection = _connection;
+                if (_connection.State!=ConnectionState.Open) cmd.Connection.Open();
             }
 
             cmd.CommandType = CommandType.Text;
@@ -236,9 +252,10 @@ namespace Civic.Core.Data
 
             foreach (object obj in parameterValues)
             {
-                if (obj is DbParameter)
+                var parameter = obj as DbParameter;
+                if (parameter != null)
                 {
-                    var param = (DbParameter)obj;
+                    var param = parameter;
                     cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
                 }
                 else
@@ -248,7 +265,7 @@ namespace Civic.Core.Data
             }
 
             int retval = cmd.ExecuteNonQuery();
-            if (_transaction == null && _autoClose) cmd.Connection.Close();
+            if (_transaction == null && _autoClose) Close();
 
             return retval;
         }
@@ -300,7 +317,7 @@ namespace Civic.Core.Data
 
                     retval = cmd.ExecuteNonQuery();
 
-                    if (_transaction == null && _autoClose) cmd.Connection.Close();
+                    if (_transaction == null && _autoClose) Close();
 
                     return retval;
                 }
@@ -414,7 +431,7 @@ namespace Civic.Core.Data
                     object retval = cmd.ExecuteScalar();
                     Logger.LogTrace(LoggingBoundaries.Database, "ExecuteScalar Called:\n{0}", lastSql);
 
-                    if (_transaction == null && _autoClose) cmd.Connection.Close();
+                    if (_transaction == null && _autoClose) Close();
 
                     return retval;
                 }
@@ -770,6 +787,12 @@ namespace Civic.Core.Data
             }
 
             return sb.ToString();
+        }
+
+        public void Dispose()
+        {
+            if(_transaction!=null) _transaction.Rollback();
+            Close();
         }
 
         #endregion Methods

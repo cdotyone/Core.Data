@@ -146,6 +146,7 @@ namespace Civic.Core.Data
 
         public void Dispose()
         {
+            if (_dbconn!=null) _dbconn.Dispose();
         }
 
         /// <summary>

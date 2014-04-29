@@ -10,6 +10,7 @@
 
 #region References
 
+using System;
 using System.Data;
 using System.Data.Common;
 
@@ -20,7 +21,7 @@ namespace Civic.Core.Data
     /// <summary>
     /// Defines an IDBConnection class that is used to connect to a database server
     /// </summary>
-    public interface IDBConnection
+    public interface IDBConnection : IDisposable
     {
         #region Properties
 
@@ -108,7 +109,15 @@ namespace Civic.Core.Data
         /// <returns>the newly cloned database connection</returns>
         IDBConnection Clone();
 
+        /// <summary>
+        /// Commit the transaction
+        /// </summary>
         void Commit();
+
+        /// <summary>
+        /// Close the connection if not already closed
+        /// </summary>
+        void Close();
 
         /// <summary>
         /// Creates a DbParameter for the underlying database access layer
