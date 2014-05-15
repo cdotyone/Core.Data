@@ -302,7 +302,12 @@ namespace Civic.Core.Data
                         cmd.Connection = _transaction.Connection;
                         cmd.Transaction = _transaction;
                     }
-                    else cmd.Connection = new SqlConnection(_connectionString);
+                    else
+                    {
+                        if (_connection == null) _connection = new SqlConnection(_connectionString);
+                        cmd.Connection = _connection;
+                        if (_connection.State != ConnectionState.Open) cmd.Connection.Open();
+                    }
 
                     //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
                     var commandParameters = new List<SqlParameter>(getSpParameters(schemaName, spName))
@@ -363,7 +368,12 @@ namespace Civic.Core.Data
                         cmd.Connection = _transaction.Connection;
                         cmd.Transaction = _transaction;
                     }
-                    else cmd.Connection = new SqlConnection(_connectionString);
+                    else
+                    {
+                        if (_connection == null) _connection = new SqlConnection(_connectionString);
+                        cmd.Connection = _connection;
+                        if (_connection.State != ConnectionState.Open) cmd.Connection.Open();
+                    }
 
                     //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
                     SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
@@ -414,7 +424,12 @@ namespace Civic.Core.Data
                         cmd.Connection = _transaction.Connection;
                         cmd.Transaction = _transaction;
                     }
-                    else cmd.Connection = new SqlConnection(_connectionString);
+                    else
+                    {
+                        if (_connection == null) _connection = new SqlConnection(_connectionString);
+                        cmd.Connection = _connection;
+                        if (_connection.State != ConnectionState.Open) cmd.Connection.Open();
+                    }
 
                     Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", commandText);
 
