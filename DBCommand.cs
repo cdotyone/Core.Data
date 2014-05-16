@@ -133,6 +133,11 @@ namespace Civic.Core.Data
         /// <param name="value"><para>The value of the parameter.</para></param>    
         public void AddParameter(string name, ParameterDirection direction, object value)
         {
+            var val = value as System.DBNull;
+
+            if (val != null)
+                value = null;
+
             _params.Add(_dbconn.CreateParameter(name, direction, value));
         }
 
