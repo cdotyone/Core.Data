@@ -22,12 +22,12 @@ using System.Linq;
 
 namespace Civic.Core.Data
 {
+
     /// <summary>
     /// This class is used to construct DBCommands that will be executed against a sql database.
     /// </summary>
     public class DBCommand : IDBCommand
     {
-
         #region Fields
 
         private readonly IDBConnection _dbconn;          // the database connections
