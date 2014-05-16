@@ -309,7 +309,16 @@ namespace Civic.Core.Data
                     }
                     else
                     {
-                        if (_connection == null) _connection = new SqlConnection(_connectionString);
+                        if (_connection == null)
+                        {
+                            _connection = new SqlConnection(_connectionString);
+                            Logger.LogTrace(LoggingBoundaries.Database, "CREATE NEW");
+                        }
+                        else
+                        {
+                            Logger.LogTrace(LoggingBoundaries.Database, "USE EXISTING");
+                        }
+
                         cmd.Connection = _connection;
                         if (_connection.State == ConnectionState.Broken)
                         {
