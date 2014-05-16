@@ -275,6 +275,7 @@ namespace Civic.Core.Data
             return retval;
         }
 
+
         /// <summary>
         /// Execute a stored procedure via a SqlCommand (that returns no resultset) against the database specified in 
         /// the connection string using the provided parameter values.  This method will query the database to discover the parameters for the 
@@ -309,31 +310,9 @@ namespace Civic.Core.Data
                     }
                     else
                     {
-                        if (_connection == null)
-                        {
-                            _connection = new SqlConnection(_connectionString);
-                            Logger.LogTrace(LoggingBoundaries.Database, "CREATE NEW");
-                        }
-                        else
-                        {
-                            Logger.LogTrace(LoggingBoundaries.Database, "USE EXISTING");
-                        }
-
+                        if (_connection == null) _connection = new SqlConnection(_connectionString);
                         cmd.Connection = _connection;
-                        if (_connection.State == ConnectionState.Broken)
-                        {
-                            try
-                            {
-                                _connection.Close();
-                            }
-                            catch
-                            {
-                            }
-                        }
-                        if (_connection.State == ConnectionState.Closed || _connection.State == ConnectionState.Broken)
-                        {
-                            cmd.Connection.Open();
-                        }
+                        if (_connection.State != ConnectionState.Open) cmd.Connection.Open();
                     }
 
                     //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
