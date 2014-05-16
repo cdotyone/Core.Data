@@ -762,18 +762,16 @@ namespace Civic.Core.Data
         {
             if (string.IsNullOrEmpty(spName)) throw new ArgumentNullException("spName");
 
-            var connection = new SqlConnection(_connectionString);
+            //var connection = new SqlConnection(_connectionString);
 
             string[] parts = spName.Split('.');
             if ( parts.Length < 2 ) parts = new [] { schemaName, spName };
             if ( parts[1].IndexOf( '[' ) < 0 ) parts[1] = '[' + parts[1] + ']';
             spName = parts[0] + '.' + parts[1];
 
-            var cmd = new SqlCommand(spName, connection) {CommandType = CommandType.StoredProcedure};
+            var cmd = new SqlCommand(spName, _connection) {CommandType = CommandType.StoredProcedure};
 
-            connection.Open();
             SqlCommandBuilder.DeriveParameters(cmd);
-            connection.Close();
 
             return cmd.Parameters;
         }
@@ -814,19 +812,6 @@ namespace Civic.Core.Data
         /// <returns>the last command executed</returns>
         private string prepareCommand(SqlCommand command, CommandType commandType, string schemaName, string commandText, SqlParameter[] commandParameters, object[] parameterValues)
         {
-            //if we were provided a transaction, assign it.
-            if (_transaction != null)
-            {
-                command.Connection = _transaction.Connection;
-                command.Transaction = _transaction;
-            }
-            else
-            {
-                //associate the connection with the command
-                command.Connection = new SqlConnection(_connectionString);
-                command.Connection.Open();
-            }
-
             //set the command text (stored procedure name or SQL statement)
             string[] parts = commandText.Split( '.' );
             if (parts.Length < 2) parts = new[] { schemaName, commandText };
