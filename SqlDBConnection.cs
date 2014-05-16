@@ -312,7 +312,17 @@ namespace Civic.Core.Data
                     {
                         if (_connection == null) _connection = new SqlConnection(_connectionString);
                         cmd.Connection = _connection;
-                        if (_connection.State != ConnectionState.Open) cmd.Connection.Open();
+                        if (_connection.State == ConnectionState.Broken)
+                        {
+                            try
+                            {
+                                _connection.Close();
+                            }
+                            catch
+                            {
+                            }
+                        }
+                        if (_connection.State == ConnectionState.Closed) cmd.Connection.Open();
                     }
 
                     //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
