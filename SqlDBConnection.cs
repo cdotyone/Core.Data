@@ -99,6 +99,11 @@ namespace Civic.Core.Data
         }
 
         /// <summary>
+        /// get/sets if the last sql string executed
+        /// </summary>
+        public string LastSql { get; set; }
+
+        /// <summary>
         /// get/sets the short code for the database connection
         /// </summary>
         public string DBCode
@@ -289,7 +294,7 @@ namespace Civic.Core.Data
         {
             //create a command and prepare it for execution
             var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
-            var lastSql = string.Empty;
+            LastSql = string.Empty;
             int retval = -1;
 
             try
@@ -316,9 +321,9 @@ namespace Civic.Core.Data
                         };
 
                     //assign the provided values to these parameters based on parameter order
-                    lastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters.ToArray(),parameterValues);
+                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters.ToArray(), parameterValues);
                     commandParameters.Clear();
-                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteNonQuery Called:\n{0}", lastSql);
+                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteNonQuery Called:\n{0}", LastSql);
 
                     retval = cmd.ExecuteNonQuery();
 
@@ -330,7 +335,7 @@ namespace Civic.Core.Data
             catch (Exception ex)
             {
                 cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, lastSql);
+                var ex2 = new SqlDBException(ex, cmd, LastSql);
                 if (Logger.HandleException(LoggingBoundaries.Database, ex2))
                     throw ex2;
             }
@@ -357,7 +362,7 @@ namespace Civic.Core.Data
         {
             //create a command and prepare it for execution
             var cmd = new SqlCommand { CommandTimeout = CommandTimeout };
-            var lastSql = string.Empty;
+            LastSql = string.Empty;
 
             try
             {
@@ -379,8 +384,8 @@ namespace Civic.Core.Data
                     SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
 
                     //assign the provided values to these parameters based on parameter order
-                    lastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
-                    Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", lastSql);
+                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
+                    Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", LastSql);
 
                     // call ExecuteReader with the appropriate CommandBehavior
                     SqlDataReader dr = _transaction != null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
@@ -391,7 +396,7 @@ namespace Civic.Core.Data
             catch (Exception ex)
             {
                 cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, lastSql);
+                var ex2 = new SqlDBException(ex, cmd, LastSql);
                 if (Logger.HandleException(LoggingBoundaries.Database, ex2))
                     throw ex2;
             }
@@ -468,7 +473,7 @@ namespace Civic.Core.Data
         {
             //create a command and prepare it for execution
             var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
-            var lastSql = string.Empty;
+            LastSql = string.Empty;
 
             try
             {
@@ -486,11 +491,11 @@ namespace Civic.Core.Data
                     SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
 
                     //assign the provided values to these parameters based on parameter order
-                    lastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
+                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
 
                     //execute the command & return the results
                     object retval = cmd.ExecuteScalar();
-                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteScalar Called:\n{0}", lastSql);
+                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteScalar Called:\n{0}", LastSql);
 
                     if (_transaction == null && _autoClose) Close();
 
@@ -500,7 +505,7 @@ namespace Civic.Core.Data
             catch (Exception ex)
             {
                 cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, lastSql);
+                var ex2 = new SqlDBException(ex, cmd, LastSql);
                 if (Logger.HandleException(LoggingBoundaries.Database, ex2))
                     throw ex2;
             }
@@ -526,7 +531,7 @@ namespace Civic.Core.Data
         {
             //create a command and prepare it for execution
             var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
-            var lastSql = string.Empty;
+            LastSql = string.Empty;
 
             try
             {
@@ -544,11 +549,11 @@ namespace Civic.Core.Data
                     SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
 
                     //assign the provided values to these parameters based on parameter order
-                    lastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
+                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
 
                     // call ExecuteReader with the appropriate CommandBehavior
                     SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
-                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteSequentialReader Called:\n{0}", lastSql);
+                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteSequentialReader Called:\n{0}", LastSql);
 
                     return dr;
                 }
@@ -556,7 +561,7 @@ namespace Civic.Core.Data
             catch (Exception ex)
             {
                 cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, lastSql);
+                var ex2 = new SqlDBException(ex, cmd, LastSql);
                 if (Logger.HandleException(LoggingBoundaries.Database, ex2))
                     throw ex2;
             }

@@ -51,6 +51,15 @@ namespace Civic.Core.Data
         }
 
         /// <summary>
+        /// get/sets if the last sql string executed
+        /// </summary>
+        string LastSql
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
         /// get/sets the short code for the database connection
         /// </summary>
         string DBCode
