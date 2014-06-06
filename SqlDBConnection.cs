@@ -763,9 +763,12 @@ namespace Civic.Core.Data
             if (string.IsNullOrEmpty(spName)) throw new ArgumentNullException("spName");
 
             var connection = _connection;
-            if (connection == null && _transaction != null) connection = _transaction.Connection;
-            if(connection==null) connection = new SqlConnection(_connectionString);
-            if (_connection == null) _connection = connection;
+            if (connection == null)
+            {
+                connection = new SqlConnection(_connectionString);
+                connection.Open();
+            }
+            if (_connection == null && _transaction == null) _connection = connection;
 
             string[] parts = spName.Split('.');
             if ( parts.Length < 2 ) parts = new [] { schemaName, spName };
@@ -773,6 +776,8 @@ namespace Civic.Core.Data
             spName = parts[0] + '.' + parts[1];
 
             var cmd = new SqlCommand(spName, connection) { CommandType = CommandType.StoredProcedure };
+            if (_transaction != null && _transaction.Connection == connection)
+                cmd.Transaction = _transaction;
 
             SqlCommandBuilder.DeriveParameters(cmd);
 
