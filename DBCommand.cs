@@ -30,7 +30,7 @@ namespace Civic.Core.Data
     {
         #region Fields
 
-        private readonly IDBConnection _dbconn;          // the database connections
+        private IDBConnection _dbconn;          // the database connections
         private readonly List<DbParameter> _params;      // the parameters to be used when excuting the command
         private readonly string _procname;               // the store procedure name to execute
         private string _schema;                          // the schema name of the procedure/command being executed
@@ -133,7 +133,7 @@ namespace Civic.Core.Data
         /// <param name="value"><para>The value of the parameter.</para></param>    
         public void AddParameter(string name, ParameterDirection direction, object value)
         {
-            var val = value as DBNull;
+            var val = value as System.DBNull;
 
             if (val != null)
                 value = null;
@@ -154,6 +154,7 @@ namespace Civic.Core.Data
             if (_dbconn != null)
             {
                 _dbconn.Dispose();
+                _dbconn = null;
             }
         }
 

@@ -399,11 +399,7 @@ namespace Civic.Core.Data
                     LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
                     Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", LastSql);
 
-                    // call ExecuteReader with the appropriate CommandBehavior
-                    //SqlDataReader dr = _transaction != null ? cmd.ExecuteReader() : 
-                    SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.CloseConnection);
-
-                    return dr;
+                    return cmd.ExecuteReader();
                 }
             }
             catch (Exception ex)
@@ -451,10 +447,7 @@ namespace Civic.Core.Data
 
                     Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", commandText);
 
-                    // call ExecuteReader with the appropriate CommandBehavior
-                    SqlDataReader dr = _transaction != null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
-
-                    return dr;
+                    return cmd.ExecuteReader();
                 }
             }
             catch (Exception ex)
