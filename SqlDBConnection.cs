@@ -187,6 +187,7 @@ namespace Civic.Core.Data
         /// </summary>
         public void Close()
         {
+            if (_connection==null) return;
             _connection.Close();
             _connection.Dispose();
             _connection = null;
