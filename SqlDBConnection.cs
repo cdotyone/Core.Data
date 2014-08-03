@@ -400,7 +400,8 @@ namespace Civic.Core.Data
                     Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", LastSql);
 
                     // call ExecuteReader with the appropriate CommandBehavior
-                    SqlDataReader dr = _transaction != null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
+                    //SqlDataReader dr = _transaction != null ? cmd.ExecuteReader() : 
+                    SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.CloseConnection);
 
                     return dr;
                 }
