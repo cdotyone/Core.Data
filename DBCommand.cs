@@ -154,7 +154,6 @@ namespace Civic.Core.Data
             if (_dbconn != null)
             {
                 _dbconn.Dispose();
-                GC.ReRegisterForFinalize(_dbconn);
                 _dbconn = null;
             }
         }

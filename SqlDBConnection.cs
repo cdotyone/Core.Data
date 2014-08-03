@@ -190,7 +190,6 @@ namespace Civic.Core.Data
             if (_connection==null) return;
             _connection.Close();
             _connection.Dispose();
-            GC.ReRegisterForFinalize(_connection);
             _connection = null;
         }
 
