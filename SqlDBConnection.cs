@@ -187,11 +187,8 @@ namespace Civic.Core.Data
         /// </summary>
         public void Close()
         {
-            if (_connection != null && _connection.State != ConnectionState.Closed && _connection.State != ConnectionState.Broken)
-            {
-                _connection.Close();
-                _connection.Dispose();
-            }
+            _connection.Close();
+            _connection.Dispose();
             _connection = null;
         }
 

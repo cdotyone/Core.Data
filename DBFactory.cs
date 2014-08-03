@@ -123,7 +123,7 @@ namespace Civic.Core.Data
         /// Database dbSvc = DatabaseFactory.CreateDatabase("SQL_Customers");
         /// </code>
         /// </example>
-        /// <param name="ConnectionString">connection string for database service</param>
+        /// <param name="connectionString">connection string for database service</param>
         /// <returns>Database</returns>
         /// <exception cref="System.Configuration.ConfigurationException">
         /// <para>- or -</para>
@@ -134,11 +134,11 @@ namespace Civic.Core.Data
         /// <exception cref="System.Reflection.TargetInvocationException">
         /// <para>The constructor being called throws an exception.</para>
         /// </exception>
-        public static IDBConnection CreateDatabaseConnectionString(string connstring)
+        public static IDBConnection CreateDatabaseConnectionString(string connectionString)
         {   
             try
             {
-                return new SqlDBConnection(connstring);
+                return new SqlDBConnection(connectionString);
             }
             catch (ConfigurationErrorsException configurationException)
             {
