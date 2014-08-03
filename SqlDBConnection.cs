@@ -238,30 +238,32 @@ namespace Civic.Core.Data
         public int ExecuteCommand(string commandText, params object[] parameterValues)
         {
             //create a command and prepare it for execution
-            var cmd = new SqlCommand { CommandTimeout = CommandTimeout };
-            setCommandConnection(cmd);
-
-            cmd.CommandType = CommandType.Text;
-            cmd.CommandText = commandText;
-
-            foreach (object obj in parameterValues)
+            using (var cmd = new SqlCommand {CommandTimeout = CommandTimeout})
             {
-                var parameter = obj as DbParameter;
-                if (parameter != null)
+                setCommandConnection(cmd);
+
+                cmd.CommandType = CommandType.Text;
+                cmd.CommandText = commandText;
+
+                foreach (object obj in parameterValues)
                 {
-                    var param = parameter;
-                    cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
+                    var parameter = obj as DbParameter;
+                    if (parameter != null)
+                    {
+                        var param = parameter;
+                        cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.Add(parameterValues);
+                    }
                 }
-                else
-                {
-                    cmd.Parameters.Add(parameterValues);
-                }
+
+                int retval = cmd.ExecuteNonQuery();
+                if (_transaction == null && _autoClose) Close();
+
+                return retval;
             }
-
-            int retval = cmd.ExecuteNonQuery();
-            if (_transaction == null && _autoClose) Close();
-
-            return retval;
         }
 
 
@@ -283,43 +285,46 @@ namespace Civic.Core.Data
         public int ExecuteNonQuery(string schemaName, string spName, params object[] parameterValues)
         {
             //create a command and prepare it for execution
-            var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
-            LastSql = string.Empty;
-            int retval = -1;
-
-            try
+            using (var cmd = new SqlCommand {CommandTimeout = CommandTimeout})
             {
-                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", schemaName, spName))
+                LastSql = string.Empty;
+                int retval = -1;
+
+                try
                 {
-                    setCommandConnection(cmd);
+                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", schemaName, spName))
+                    {
+                        setCommandConnection(cmd);
 
-                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                    var commandParameters = new List<SqlParameter>(getSpParameters(schemaName, spName))
-                        {
-                            new SqlParameter("@RETURN_VALUE", 0) {Direction = ParameterDirection.ReturnValue}
-                        };
+                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                        var commandParameters = new List<SqlParameter>(getSpParameters(schemaName, spName))
+                            {
+                                new SqlParameter("@RETURN_VALUE", 0) {Direction = ParameterDirection.ReturnValue}
+                            };
 
-                    //assign the provided values to these parameters based on parameter order
-                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters.ToArray(), parameterValues);
-                    commandParameters.Clear();
-                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteNonQuery Called:\n{0}", LastSql);
+                        //assign the provided values to these parameters based on parameter order
+                        LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName,
+                                                 commandParameters.ToArray(), parameterValues);
+                        commandParameters.Clear();
+                        Logger.LogTrace(LoggingBoundaries.Database, "ExecuteNonQuery Called:\n{0}", LastSql);
 
-                    retval = cmd.ExecuteNonQuery();
+                        retval = cmd.ExecuteNonQuery();
 
-                    if (_transaction == null && _autoClose) Close();
+                        if (_transaction == null && _autoClose) Close();
 
-                    return retval;
+                        return retval;
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, LastSql);
-                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                    throw ex2;
-            }
+                catch (Exception ex)
+                {
+                    cmd.Connection = null;
+                    var ex2 = new SqlDBException(ex, cmd, LastSql);
+                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                        throw ex2;
+                }
 
-            return retval;
+                return retval;
+            }
         }
 
         /// <summary>
@@ -340,33 +345,35 @@ namespace Civic.Core.Data
         public IDataReader ExecuteReader(string schemaName, string spName, params object[] parameterValues)
         {
             //create a command and prepare it for execution
-            var cmd = new SqlCommand { CommandTimeout = CommandTimeout };
-            LastSql = string.Empty;
-
-            try
+            using (var cmd = new SqlCommand { CommandTimeout = CommandTimeout })
             {
-                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", schemaName, spName))
+                LastSql = string.Empty;
+
+                try
                 {
-                    setCommandConnection(cmd);
+                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", schemaName, spName))
+                    {
+                        setCommandConnection(cmd);
 
-                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                    SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
+                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                        SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
 
-                    //assign the provided values to these parameters based on parameter order
-                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
-                    Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", LastSql);
+                        //assign the provided values to these parameters based on parameter order
+                        LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
+                        Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", LastSql);
 
-                    return _transaction==null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
+                        return _transaction == null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
+                    }
                 }
+                catch (Exception ex)
+                {
+                    cmd.Connection = null;
+                    var ex2 = new SqlDBException(ex, cmd, LastSql);
+                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                        throw ex2;
+                }
+                return null;
             }
-            catch (Exception ex)
-            {
-                cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, LastSql);
-                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                    throw ex2;
-            }
-            return null;
         }
 
         private void setCommandConnection(SqlCommand cmd)
@@ -381,12 +388,6 @@ namespace Civic.Core.Data
                 if (_connection == null) _connection = new SqlConnection(_connectionString);
                 cmd.Connection = _connection;
                 if (_connection.State != ConnectionState.Open) cmd.Connection.Open();
-                if (_connection.State != ConnectionState.Open)
-                {
-                    Logger.LogWarning(LoggingBoundaries.DataLayer, "Clearing All Connection Pools");
-                    SqlConnection.ClearAllPools();
-                    _connection.Open();
-                }
             }
         }
 
@@ -405,27 +406,28 @@ namespace Civic.Core.Data
         public IDataReader ExecuteReader(string commandText)
         {
             //create a command and prepare it for execution
-            var cmd = new SqlCommand { CommandTimeout = CommandTimeout, CommandType = CommandType.Text, CommandText = commandText };
-
-            try
+            using (var cmd = new SqlCommand { CommandTimeout = CommandTimeout, CommandType = CommandType.Text, CommandText = commandText })
             {
-                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", commandText))
+                try
                 {
-                    setCommandConnection(cmd);
+                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", commandText))
+                    {
+                        setCommandConnection(cmd);
 
-                    Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", commandText);
+                        Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", commandText);
 
-                    return cmd.ExecuteReader();
+                        return cmd.ExecuteReader();
+                    }
                 }
+                catch (Exception ex)
+                {
+                    cmd.Connection = null;
+                    var ex2 = new SqlDBException(ex, cmd, commandText);
+                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                        throw ex2;
+                }
+                return null;
             }
-            catch (Exception ex)
-            {
-                cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, commandText);
-                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                    throw ex2;
-            }
-            return null;
         }
 
         /// <summary>
@@ -446,38 +448,41 @@ namespace Civic.Core.Data
         public object ExecuteScalar(string schemaName, string spName, params object[] parameterValues)
         {
             //create a command and prepare it for execution
-            var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
-            LastSql = string.Empty;
-
-            try
+            using (var cmd = new SqlCommand {CommandTimeout = CommandTimeout})
             {
-                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteScalar", schemaName, spName))
+                LastSql = string.Empty;
+
+                try
                 {
-                    setCommandConnection(cmd);
+                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteScalar", schemaName, spName))
+                    {
+                        setCommandConnection(cmd);
 
-                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                    SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
+                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                        SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
 
-                    //assign the provided values to these parameters based on parameter order
-                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
+                        //assign the provided values to these parameters based on parameter order
+                        LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters,
+                                                 parameterValues);
 
-                    //execute the command & return the results
-                    object retval = cmd.ExecuteScalar();
-                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteScalar Called:\n{0}", LastSql);
+                        //execute the command & return the results
+                        object retval = cmd.ExecuteScalar();
+                        Logger.LogTrace(LoggingBoundaries.Database, "ExecuteScalar Called:\n{0}", LastSql);
 
-                    if (_transaction == null && _autoClose) Close();
+                        if (_transaction == null && _autoClose) Close();
 
-                    return retval;
+                        return retval;
+                    }
                 }
+                catch (Exception ex)
+                {
+                    cmd.Connection = null;
+                    var ex2 = new SqlDBException(ex, cmd, LastSql);
+                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                        throw ex2;
+                }
+                return null;
             }
-            catch (Exception ex)
-            {
-                cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, LastSql);
-                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                    throw ex2;
-            }
-            return null;
         }
 
         /// <summary>
@@ -498,36 +503,40 @@ namespace Civic.Core.Data
         public IDataReader ExecuteSequentialReader(string schemaName, string spName, params object[] parameterValues)
         {
             //create a command and prepare it for execution
-            var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
-            LastSql = string.Empty;
-
-            try
+            using (var cmd = new SqlCommand {CommandTimeout = CommandTimeout})
             {
-                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteSequentialReader", schemaName, spName))
+                LastSql = string.Empty;
+
+                try
                 {
-                    setCommandConnection(cmd);
+                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteSequentialReader", schemaName, spName)
+                        )
+                    {
+                        setCommandConnection(cmd);
 
-                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                    SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
+                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                        SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
 
-                    //assign the provided values to these parameters based on parameter order
-                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
+                        //assign the provided values to these parameters based on parameter order
+                        LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters,
+                                                 parameterValues);
 
-                    // call ExecuteReader with the appropriate CommandBehavior
-                    SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
-                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteSequentialReader Called:\n{0}", LastSql);
+                        // call ExecuteReader with the appropriate CommandBehavior
+                        SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+                        Logger.LogTrace(LoggingBoundaries.Database, "ExecuteSequentialReader Called:\n{0}", LastSql);
 
-                    return dr;
+                        return dr;
+                    }
                 }
+                catch (Exception ex)
+                {
+                    cmd.Connection = null;
+                    var ex2 = new SqlDBException(ex, cmd, LastSql);
+                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                        throw ex2;
+                }
+                return null;
             }
-            catch (Exception ex)
-            {
-                cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, LastSql);
-                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                    throw ex2;
-            }
-            return null;
         }
 
         /// <summary>
