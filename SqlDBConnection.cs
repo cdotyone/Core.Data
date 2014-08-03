@@ -31,6 +31,8 @@ namespace Civic.Core.Data
     {
         #region Fields
 
+        private bool _disposed;
+
         private static readonly Hashtable _paramcache = Hashtable.Synchronized(new Hashtable());
         private int _commandTimeout = 30;       // timout for commands
         private string _connectionString;       // connection string
@@ -39,8 +41,9 @@ namespace Civic.Core.Data
         private readonly Dictionary<string, DbParameter> _paramDefault = new Dictionary<string, DbParameter>();
         private readonly List<string> _persistDefault = new List<string>();
         private SqlTransaction _transaction;    // open sql transaction
+        private List<SqlCommand> _commandsToDispose = new List<SqlCommand>();
+        private List<IDataReader> _readersToDispose = new List<IDataReader>();
         
-        private bool _autoClose = true;         // auto close the connection when command terminates
         private SqlConnection _connection;      // sql connection if there is one
 
         #endregion Fields
@@ -87,15 +90,6 @@ namespace Civic.Core.Data
             {
                 _connectionString = value;
             }
-        }
-
-        /// <summary>
-        /// get/set if the connection should be closed after a command executes, ignored if transaction is in place
-        /// </summary>
-        public bool AutoClose
-        {
-            get { return _autoClose; }
-            set { _autoClose = value; }
         }
 
         /// <summary>
@@ -150,6 +144,7 @@ namespace Civic.Core.Data
         {
             if (_transaction != null) return;
             var connection = new SqlConnection(_connectionString);
+            Logger.LogTrace(LoggingBoundaries.DataLayer, "Opening new connection {0}", "BeginTrans");
             connection.Open();
             _transaction = connection.BeginTransaction();
         }
@@ -165,7 +160,6 @@ namespace Civic.Core.Data
             }
 
             newConn._dbcode = _dbcode;
-            newConn._connectionString = _connectionString;
             newConn._connectionString = _connectionString;
 
             return newConn;
@@ -187,8 +181,13 @@ namespace Civic.Core.Data
         /// </summary>
         public void Close()
         {
-            if (_connection==null) return;
-            _connection.Close();
+            if (_connection == null)
+            {
+                Logger.LogTrace(LoggingBoundaries.DataLayer, "Closing connection is null");
+                return;
+            }
+            
+            Logger.LogTrace(LoggingBoundaries.DataLayer, "Closing Connection: {0}", "Close");
             _connection.Dispose();
             _connection = null;
         }
@@ -234,7 +233,6 @@ namespace Civic.Core.Data
             return new DBCommand(this, schemaName, procName);
         }
 
-
         public int ExecuteCommand(string commandText, params object[] parameterValues)
         {
             //create a command and prepare it for execution
@@ -260,7 +258,6 @@ namespace Civic.Core.Data
                 }
 
                 int retval = cmd.ExecuteNonQuery();
-                if (_transaction == null && _autoClose) Close();
 
                 return retval;
             }
@@ -310,8 +307,6 @@ namespace Civic.Core.Data
 
                         retval = cmd.ExecuteNonQuery();
 
-                        if (_transaction == null && _autoClose) Close();
-
                         return retval;
                     }
                 }
@@ -345,35 +340,42 @@ namespace Civic.Core.Data
         public IDataReader ExecuteReader(string schemaName, string spName, params object[] parameterValues)
         {
             //create a command and prepare it for execution
-            using (var cmd = new SqlCommand { CommandTimeout = CommandTimeout })
+            var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
+            _commandsToDispose.Add(cmd);
+            LastSql = string.Empty;
+
+            try
             {
-                LastSql = string.Empty;
-
-                try
+                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", schemaName, spName))
                 {
-                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", schemaName, spName))
-                    {
-                        setCommandConnection(cmd);
+                    setCommandConnection(cmd);
 
-                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                        SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
+                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                    SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
 
-                        //assign the provided values to these parameters based on parameter order
-                        LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
-                        Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", LastSql);
+                    //assign the provided values to these parameters based on parameter order
+                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters,
+                                             parameterValues);
+                    Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", LastSql);
 
-                        return _transaction == null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
-                    }
+/*
+                    return _transaction == null
+                               ? cmd.ExecuteReader()
+                               : cmd.ExecuteReader(CommandBehavior.CloseConnection);
+*/
+                    var dr = cmd.ExecuteReader();
+                    _readersToDispose.Add(dr);
+                    return dr;
                 }
-                catch (Exception ex)
-                {
-                    cmd.Connection = null;
-                    var ex2 = new SqlDBException(ex, cmd, LastSql);
-                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                        throw ex2;
-                }
-                return null;
             }
+            catch (Exception ex)
+            {
+                cmd.Connection = null;
+                var ex2 = new SqlDBException(ex, cmd, LastSql);
+                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                    throw ex2;
+            }
+            return null;
         }
 
         private void setCommandConnection(SqlCommand cmd)
@@ -387,7 +389,11 @@ namespace Civic.Core.Data
             {
                 if (_connection == null) _connection = new SqlConnection(_connectionString);
                 cmd.Connection = _connection;
-                if (_connection.State != ConnectionState.Open) cmd.Connection.Open();
+                if (_connection.State != ConnectionState.Open)
+                {
+                    Logger.LogTrace(LoggingBoundaries.DataLayer, "Opening new connection {0}", "setCommandConnection");
+                    cmd.Connection.Open();
+                }
             }
         }
 
@@ -406,28 +412,30 @@ namespace Civic.Core.Data
         public IDataReader ExecuteReader(string commandText)
         {
             //create a command and prepare it for execution
-            using (var cmd = new SqlCommand { CommandTimeout = CommandTimeout, CommandType = CommandType.Text, CommandText = commandText })
+            var cmd = new SqlCommand { CommandTimeout = CommandTimeout, CommandType = CommandType.Text, CommandText = commandText };
+            _commandsToDispose.Add(cmd);
+
+            try
             {
-                try
+                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", commandText))
                 {
-                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", commandText))
-                    {
-                        setCommandConnection(cmd);
+                    setCommandConnection(cmd);
 
-                        Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", commandText);
+                    Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", commandText);
 
-                        return cmd.ExecuteReader();
-                    }
+                    var dr = cmd.ExecuteReader();
+                    _readersToDispose.Add(dr);
+                    return dr;
                 }
-                catch (Exception ex)
-                {
-                    cmd.Connection = null;
-                    var ex2 = new SqlDBException(ex, cmd, commandText);
-                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                        throw ex2;
-                }
-                return null;
             }
+            catch (Exception ex)
+            {
+                cmd.Connection = null;
+                var ex2 = new SqlDBException(ex, cmd, commandText);
+                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                    throw ex2;
+            }
+            return null;
         }
 
         /// <summary>
@@ -469,8 +477,6 @@ namespace Civic.Core.Data
                         object retval = cmd.ExecuteScalar();
                         Logger.LogTrace(LoggingBoundaries.Database, "ExecuteScalar Called:\n{0}", LastSql);
 
-                        if (_transaction == null && _autoClose) Close();
-
                         return retval;
                     }
                 }
@@ -503,40 +509,41 @@ namespace Civic.Core.Data
         public IDataReader ExecuteSequentialReader(string schemaName, string spName, params object[] parameterValues)
         {
             //create a command and prepare it for execution
-            using (var cmd = new SqlCommand {CommandTimeout = CommandTimeout})
+
+            var cmd = new SqlCommand {CommandTimeout = CommandTimeout};
+            _commandsToDispose.Add(cmd);
+            LastSql = string.Empty;
+
+            try
             {
-                LastSql = string.Empty;
-
-                try
+                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteSequentialReader", schemaName, spName)
+                    )
                 {
-                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteSequentialReader", schemaName, spName)
-                        )
-                    {
-                        setCommandConnection(cmd);
+                    setCommandConnection(cmd);
 
-                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                        SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
+                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                    SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
 
-                        //assign the provided values to these parameters based on parameter order
-                        LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters,
-                                                 parameterValues);
+                    //assign the provided values to these parameters based on parameter order
+                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters,
+                                             parameterValues);
 
-                        // call ExecuteReader with the appropriate CommandBehavior
-                        SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
-                        Logger.LogTrace(LoggingBoundaries.Database, "ExecuteSequentialReader Called:\n{0}", LastSql);
+                    // call ExecuteReader with the appropriate CommandBehavior
+                    SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteSequentialReader Called:\n{0}", LastSql);
 
-                        return dr;
-                    }
+                    _readersToDispose.Add(dr);
+                    return dr;
                 }
-                catch (Exception ex)
-                {
-                    cmd.Connection = null;
-                    var ex2 = new SqlDBException(ex, cmd, LastSql);
-                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                        throw ex2;
-                }
-                return null;
             }
+            catch (Exception ex)
+            {
+                cmd.Connection = null;
+                var ex2 = new SqlDBException(ex, cmd, LastSql);
+                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                    throw ex2;
+            }
+            return null;
         }
 
         /// <summary>
@@ -726,9 +733,14 @@ namespace Civic.Core.Data
             if (connection == null)
             {
                 connection = new SqlConnection(_connectionString);
+                Logger.LogTrace(LoggingBoundaries.DataLayer, "Opening new connection {0}", "discoverSpParameterSet");
                 connection.Open();
             }
-            if (_connection == null && _transaction == null) _connection = connection;
+            if (_connection == null && _transaction == null)
+            {
+                Logger.LogTrace(LoggingBoundaries.DataLayer, "Opening connection was null: {0}", "discoverSpParameterSet");
+                _connection = connection;
+            }
 
             string[] parts = spName.Split('.');
             if ( parts.Length < 2 ) parts = new [] { schemaName, spName };
@@ -821,8 +833,30 @@ namespace Civic.Core.Data
 
         public void Dispose()
         {
+            if(_disposed) return;
+
+            foreach (var reader in _readersToDispose)
+            {
+                reader.Dispose();
+            }
+            _readersToDispose.Clear();
+
+            foreach (var cmd in _commandsToDispose)
+            {
+                cmd.Dispose();
+                cmd.Connection = null;
+            }
+            _commandsToDispose.Clear();
+
+            Logger.LogTrace(LoggingBoundaries.DataLayer, "Disposing");
+
             if(_transaction!=null) _transaction.Rollback();
             Close();
+
+            _disposed = true;
+            _paramDefault.Clear();
+            _persistDefault.Clear();
+            _transaction = null;
         }
 
         #endregion Methods

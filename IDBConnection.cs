@@ -42,15 +42,6 @@ namespace Civic.Core.Data
         }
 
         /// <summary>
-        /// get/sets if the connection should be closed after a command executes, ignored if transaction is in place
-        /// </summary>
-        bool AutoClose
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
         /// get/sets if the last sql string executed
         /// </summary>
         string LastSql

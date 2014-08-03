@@ -192,16 +192,6 @@
     <None Include="Nuget\pack.bat" />
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Civic.Core.Configuration\Civic.Core.Configuration.csproj">
-      <Project>{4243bf37-b025-4ad1-874e-8b118869c5cf}</Project>
-      <Name>Civic.Core.Configuration</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Civic.Core.Logging\Civic.Core.Logging.csproj">
-      <Project>{62b8463d-2c19-47c2-a7c2-2740f78c27d1}</Project>
-      <Name>Civic.Core.Logging</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>
