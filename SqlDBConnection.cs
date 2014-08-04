@@ -31,6 +31,10 @@ namespace Civic.Core.Data
     {
         #region Fields
 
+        private static readonly Dictionary<int,List<SqlConnection>> _openConnections = new Dictionary<int, List<SqlConnection>>();
+        private static readonly Dictionary<int, object> _locks = new Dictionary<int, object>();
+        private static readonly object _dictLock = new object();
+
         private static readonly Hashtable _paramcache = Hashtable.Synchronized(new Hashtable());
         private int _commandTimeout = 30;       // timout for commands
         private string _connectionString;       // connection string
@@ -40,9 +44,8 @@ namespace Civic.Core.Data
         private readonly List<string> _persistDefault = new List<string>();
         private SqlTransaction _transaction;    // open sql transaction
 
-        private bool _autoClose = true;         // auto close the connection when command terminates
         private SqlConnection _connection;      // sql connection if there is one
-
+        private int _hash = -1;
         #endregion Fields
 
         #region Constructors
@@ -88,15 +91,6 @@ namespace Civic.Core.Data
             {
                 _connectionString = value;
             }
-        }
-
-        /// <summary>
-        /// get/set if the connection should be closed after a command executes, ignored if transaction is in place
-        /// </summary>
-        public bool AutoClose
-        {
-            get { return _autoClose; }
-            set { _autoClose = value; }
         }
 
         /// <summary>
@@ -148,11 +142,88 @@ namespace Civic.Core.Data
             addDefaultParameter(CreateParameter(name, value), canBeCached, false);
         }
 
+        public static SqlConnection GetSqlConnection(SqlDBConnection connection)
+        {
+            var hash = connection._hash = connection._connectionString.Replace(" ", "").ToLowerInvariant().GetHashCode();
+            if (!_openConnections.ContainsKey(hash))
+            {
+                lock (_dictLock)
+                {
+                    _openConnections.Add(hash,new List<SqlConnection>());
+                    _locks.Add(hash,new object());
+                }       
+            }
+
+            var retry = 3;
+            while (retry > 0)
+            {
+                SqlConnection sqlConnection = null;
+                lock (_locks[hash])
+                {
+                    var connections = _openConnections[hash];
+                    if (connections.Count > 0)
+                    {
+                        sqlConnection = connections[0];
+                        connections.RemoveAt(0);
+                    }
+                }
+
+                if (sqlConnection == null)
+                {
+                    sqlConnection = new SqlConnection(connection._connectionString);
+                }
+                if (sqlConnection.State == ConnectionState.Broken)
+                {
+                    try
+                    {
+                        sqlConnection.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogTrace(LoggingBoundaries.DataLayer, ex);
+                    }
+                }
+                if (sqlConnection.State != ConnectionState.Open)
+                {
+                    try
+                    {
+                        if (sqlConnection.State != ConnectionState.Closed) sqlConnection.Close();
+                        sqlConnection.Open();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(LoggingBoundaries.DataLayer, ex);
+                    }
+                }
+                retry--;
+                if (sqlConnection.State == ConnectionState.Open) return sqlConnection;
+            }
+            return null;
+        }
+
+        public static void ReleaseSqlConnection(SqlDBConnection connection)
+        {
+            var hash = connection._hash;
+            if (!_openConnections.ContainsKey(hash))
+            {
+                lock (_dictLock)
+                {
+                    _openConnections.Add(hash, new List<SqlConnection>());
+                    _locks.Add(hash, new object());
+                }
+            }
+            lock (_locks[hash])
+            {
+                var connections = _openConnections[hash];
+                connections.Add(connection._connection);
+                connection._connection = null;
+            }
+        }
+
         public void BeginTrans()
         {
             if (_transaction != null) return;
-            var connection = new SqlConnection(_connectionString);
-            connection.Open();
+            var connection = GetSqlConnection(this);
             _transaction = connection.BeginTransaction();
         }
 
@@ -189,8 +260,10 @@ namespace Civic.Core.Data
         /// </summary>
         public void Close()
         {
-            if (_connection != null && _connection.State != ConnectionState.Closed && _connection.State != ConnectionState.Broken)
-                _connection.Close();
+            if (_connection != null)
+            {
+                ReleaseSqlConnection(this);
+            }
             _connection = null;
         }
 
@@ -240,19 +313,7 @@ namespace Civic.Core.Data
         {
             //create a command and prepare it for execution
             var cmd = new SqlCommand { CommandTimeout = CommandTimeout };
-
-
-            if (_transaction != null)
-            {
-                cmd.Connection = _transaction.Connection;
-                cmd.Transaction = _transaction;
-            }
-            else
-            {
-                if (_connection == null) _connection = new SqlConnection(_connectionString);
-                cmd.Connection = _connection;
-                if (_connection.State != ConnectionState.Open) cmd.Connection.Open();
-            }
+            setCommandConnection(cmd);
 
             cmd.CommandType = CommandType.Text;
             cmd.CommandText = commandText;
@@ -272,9 +333,23 @@ namespace Civic.Core.Data
             }
 
             int retval = cmd.ExecuteNonQuery();
-            if (_transaction == null && _autoClose) Close();
+            ReleaseSqlConnection(this);
 
             return retval;
+        }
+
+        private void setCommandConnection(SqlCommand cmd)
+        {
+            if (_transaction != null)
+            {
+                cmd.Connection = _transaction.Connection;
+                cmd.Transaction = _transaction;
+            }
+            else
+            {
+                if (_connection == null) _connection = GetSqlConnection(this);
+                cmd.Connection = _connection;
+            }
         }
 
 
@@ -296,64 +371,46 @@ namespace Civic.Core.Data
         public int ExecuteNonQuery(string schemaName, string spName, params object[] parameterValues)
         {
             //create a command and prepare it for execution
-            var cmd = new SqlCommand { CommandTimeout = CommandTimeout };
-            LastSql = string.Empty;
-            int retval = -1;
-
-            try
+            using (var cmd = new SqlCommand {CommandTimeout = CommandTimeout})
             {
-                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", schemaName, spName))
+                LastSql = string.Empty;
+                int retval = -1;
+
+                try
                 {
-
-                    if (_transaction != null)
+                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", schemaName, spName))
                     {
-                        cmd.Connection = _transaction.Connection;
-                        cmd.Transaction = _transaction;
-                    }
-                    else
-                    {
-                        if (_connection == null) _connection = new SqlConnection(_connectionString);
-                        cmd.Connection = _connection;
-                        if (_connection.State == ConnectionState.Broken)
-                        {
-                            try
+                        setCommandConnection(cmd);
+
+                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                        var commandParameters = new List<SqlParameter>(getSpParameters(schemaName, spName))
                             {
-                                _connection.Close();
-                            }
-                            catch
-                            {
-                            }
-                        }
-                        if (_connection.State == ConnectionState.Closed) cmd.Connection.Open();
+                                new SqlParameter("@RETURN_VALUE", 0) {Direction = ParameterDirection.ReturnValue}
+                            };
+
+                        //assign the provided values to these parameters based on parameter order
+                        LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName,
+                                                 commandParameters.ToArray(), parameterValues);
+                        commandParameters.Clear();
+                        Logger.LogTrace(LoggingBoundaries.Database, "ExecuteNonQuery Called:\n{0}", LastSql);
+
+                        retval = cmd.ExecuteNonQuery();
+
+                        ReleaseSqlConnection(this);
+
+                        return retval;
                     }
-
-                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                    var commandParameters = new List<SqlParameter>(getSpParameters(schemaName, spName))
-                        {
-                            new SqlParameter("@RETURN_VALUE", 0) {Direction = ParameterDirection.ReturnValue}
-                        };
-
-                    //assign the provided values to these parameters based on parameter order
-                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters.ToArray(), parameterValues);
-                    commandParameters.Clear();
-                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteNonQuery Called:\n{0}", LastSql);
-
-                    retval = cmd.ExecuteNonQuery();
-
-                    if (_transaction == null && _autoClose) Close();
-
-                    return retval;
                 }
-            }
-            catch (Exception ex)
-            {
-                cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, LastSql);
-                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                    throw ex2;
-            }
+                catch (Exception ex)
+                {
+                    cmd.Connection = null;
+                    var ex2 = new SqlDBException(ex, cmd, LastSql);
+                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                        throw ex2;
+                }
 
-            return retval;
+                return retval;
+            }
         }
 
         /// <summary>
@@ -381,17 +438,7 @@ namespace Civic.Core.Data
             {
                 using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", schemaName, spName))
                 {
-                    if (_transaction != null)
-                    {
-                        cmd.Connection = _transaction.Connection;
-                        cmd.Transaction = _transaction;
-                    }
-                    else
-                    {
-                        if (_connection == null) _connection = new SqlConnection(_connectionString);
-                        cmd.Connection = _connection;
-                        if (_connection.State != ConnectionState.Open) cmd.Connection.Open();
-                    }
+                    setCommandConnection(cmd);
 
                     //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
                     SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
@@ -437,17 +484,7 @@ namespace Civic.Core.Data
             {
                 using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", commandText))
                 {
-                    if (_transaction != null)
-                    {
-                        cmd.Connection = _transaction.Connection;
-                        cmd.Transaction = _transaction;
-                    }
-                    else
-                    {
-                        if (_connection == null) _connection = new SqlConnection(_connectionString);
-                        cmd.Connection = _connection;
-                        if (_connection.State != ConnectionState.Open) cmd.Connection.Open();
-                    }
+                    setCommandConnection(cmd);
 
                     Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", commandText);
 
@@ -485,44 +522,41 @@ namespace Civic.Core.Data
         public object ExecuteScalar(string schemaName, string spName, params object[] parameterValues)
         {
             //create a command and prepare it for execution
-            var cmd = new SqlCommand { CommandTimeout = CommandTimeout };
-            LastSql = string.Empty;
-
-            try
+            using (var cmd = new SqlCommand {CommandTimeout = CommandTimeout})
             {
-                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteScalar", schemaName, spName))
+                LastSql = string.Empty;
+
+                try
                 {
-
-                    if (_transaction != null)
+                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteScalar", schemaName, spName))
                     {
-                        cmd.Connection = _transaction.Connection;
-                        cmd.Transaction = _transaction;
+                        setCommandConnection(cmd);
+
+                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                        SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
+
+                        //assign the provided values to these parameters based on parameter order
+                        LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters,
+                                                 parameterValues);
+
+                        //execute the command & return the results
+                        object retval = cmd.ExecuteScalar();
+                        Logger.LogTrace(LoggingBoundaries.Database, "ExecuteScalar Called:\n{0}", LastSql);
+
+                        ReleaseSqlConnection(this);
+
+                        return retval;
                     }
-                    else cmd.Connection = new SqlConnection(_connectionString);
-
-                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                    SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
-
-                    //assign the provided values to these parameters based on parameter order
-                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
-
-                    //execute the command & return the results
-                    object retval = cmd.ExecuteScalar();
-                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteScalar Called:\n{0}", LastSql);
-
-                    if (_transaction == null && _autoClose) Close();
-
-                    return retval;
                 }
+                catch (Exception ex)
+                {
+                    cmd.Connection = null;
+                    var ex2 = new SqlDBException(ex, cmd, LastSql);
+                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                        throw ex2;
+                }
+                return null;
             }
-            catch (Exception ex)
-            {
-                cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, LastSql);
-                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                    throw ex2;
-            }
-            return null;
         }
 
         /// <summary>
@@ -550,13 +584,7 @@ namespace Civic.Core.Data
             {
                 using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteSequentialReader", schemaName, spName))
                 {
-
-                    if (_transaction != null)
-                    {
-                        cmd.Connection = _transaction.Connection;
-                        cmd.Transaction = _transaction;
-                    }
-                    else cmd.Connection = new SqlConnection(_connectionString);
+                    setCommandConnection(cmd);
 
                     //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
                     SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
@@ -764,18 +792,13 @@ namespace Civic.Core.Data
         {
             if (string.IsNullOrEmpty(spName)) throw new ArgumentNullException("spName");
 
-            var connection = new SqlConnection(_connectionString);
-
             string[] parts = spName.Split('.');
             if (parts.Length < 2) parts = new[] { schemaName, spName };
             if (parts[1].IndexOf('[') < 0) parts[1] = '[' + parts[1] + ']';
             spName = parts[0] + '.' + parts[1];
 
-            var cmd = new SqlCommand(spName, connection) { CommandType = CommandType.StoredProcedure };
-
-            connection.Open();
+            var cmd = new SqlCommand(spName, _connection) { CommandType = CommandType.StoredProcedure };
             SqlCommandBuilder.DeriveParameters(cmd);
-            connection.Close();
 
             return cmd.Parameters;
         }
