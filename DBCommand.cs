@@ -1,6 +1,6 @@
 #region Copyright / Comments
 
-// <copyright file="DBCommand.cs" company="Civic Engineering & IT">Copyright © Civic Engineering & IT 2013</copyright>
+// <copyright file="DBCommand.cs" company="Civic Engineering & IT">Copyright Â© Civic Engineering & IT 2013</copyright>
 // <author>Chris Doty</author>
 // <email>dotyc@civicinc.com</email>
 // <date>6/4/2013</date>
@@ -30,7 +30,7 @@ namespace Civic.Core.Data
     {
         #region Fields
 
-        private IDBConnection _dbconn;          // the database connections
+        private readonly IDBConnection _dbconn;          // the database connections
         private readonly List<DbParameter> _params;      // the parameters to be used when excuting the command
         private readonly string _procname;               // the store procedure name to execute
         private string _schema;                          // the schema name of the procedure/command being executed
@@ -66,7 +66,7 @@ namespace Civic.Core.Data
             get { return _dbconn; }
         }
 
-        public string Schema    
+        public string Schema
         {
             get { return _schema; }
             set { _schema = value; }
@@ -225,9 +225,9 @@ namespace Civic.Core.Data
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public DbParameter GetOutParameter( string name )
+        public DbParameter GetOutParameter(string name)
         {
-            DbParameter tparam = _dbconn.CreateParameter( name, null );
+            DbParameter tparam = _dbconn.CreateParameter(name, null);
             return _params.FirstOrDefault(param => string.Compare(param.ParameterName, tparam.ParameterName, StringComparison.InvariantCultureIgnoreCase) == 0);
         }
 
