@@ -171,6 +171,14 @@ namespace Civic.Core.Data
                 if (sqlConnection == null)
                 {
                     sqlConnection = new SqlConnection(connection._connectionString);
+
+                    // if we are here that means has to create a new
+                    Logger.LogTrace(LoggingBoundaries.DataLayer, "Creating new SQL Connection");
+                }
+                else
+                {
+                    // if we are here that means we pulled one from the queue.
+                    Logger.LogTrace(LoggingBoundaries.DataLayer, "Reusing SQL Connection");
                 }
                 if (sqlConnection.State == ConnectionState.Broken)
                 {
@@ -447,9 +455,7 @@ namespace Civic.Core.Data
                     LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
                     Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", LastSql);
 
-                    // call ExecuteReader with the appropriate CommandBehavior
-                    SqlDataReader dr = _transaction != null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
-
+                    var dr = cmd.ExecuteReader();
                     return dr;
                 }
             }
@@ -488,9 +494,7 @@ namespace Civic.Core.Data
 
                     Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", commandText);
 
-                    // call ExecuteReader with the appropriate CommandBehavior
-                    SqlDataReader dr = _transaction != null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
-
+                    var dr = cmd.ExecuteReader();
                     return dr;
                 }
             }
@@ -592,10 +596,7 @@ namespace Civic.Core.Data
                     //assign the provided values to these parameters based on parameter order
                     LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
 
-                    // call ExecuteReader with the appropriate CommandBehavior
-                    SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
-                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteSequentialReader Called:\n{0}", LastSql);
-
+                    var dr = cmd.ExecuteReader();
                     return dr;
                 }
             }
