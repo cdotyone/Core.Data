@@ -426,9 +426,8 @@ namespace Civic.Core.Data
         /// </summary>
         /// <param name="schemaName">the schema the stored procedure belongs to</param>
         /// <param name="spName">The name of the stored procedure</param>
-        /// <param name="connection">database connection to use</param>
         /// <returns>The parameter collection discovered.</returns>
-        private SqlParameterCollection discoverSpParameterSet(string schemaName, string spName, SqlConnection connection)
+        private SqlParameterCollection discoverSpParameterSet(string schemaName, string spName)
         {
             if (string.IsNullOrEmpty(spName)) throw new ArgumentNullException("spName");
 
@@ -437,8 +436,12 @@ namespace Civic.Core.Data
             if (parts[1].IndexOf('[') < 0) parts[1] = '[' + parts[1] + ']';
             spName = parts[0] + '.' + parts[1];
 
-            var cmd = new SqlCommand(spName, connection) { CommandType = CommandType.StoredProcedure };
-            SqlCommandBuilder.DeriveParameters(cmd);
+            SqlCommand cmd;
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                cmd = new SqlCommand(spName, connection) { CommandType = CommandType.StoredProcedure };
+                SqlCommandBuilder.DeriveParameters(cmd);               
+            }
 
             return cmd.Parameters;
         }
@@ -451,18 +454,6 @@ namespace Civic.Core.Data
         /// <returns>An array of SqlParameters</returns>
         internal SqlParameter[] GetSpParameters(string schemaName, string spName)
         {
-            return GetSpParameters(schemaName, spName, _connection);
-        }
-
-        /// <summary>
-        /// Retrieves the set of SqlParameters appropriate for the stored procedure
-        /// </summary>
-        /// <param name="schemaName">the schema the store procedure belongs to</param>
-        /// <param name="spName">The name of the stored procedure</param>
-        /// <param name="connection">database connection to use</param>
-        /// <returns>An array of SqlParameters</returns>
-        internal SqlParameter[] GetSpParameters(string schemaName, string spName, SqlConnection connection)
-        {
             if (string.IsNullOrEmpty(spName)) throw new ArgumentNullException("spName");
 
             string key = _dbcode + ":" + spName;
@@ -470,7 +461,7 @@ namespace Civic.Core.Data
             var cachedParameters = (SqlParameterCollection)_paramcache[key];
             if (cachedParameters == null)
             {
-                SqlParameterCollection spParameters = discoverSpParameterSet(schemaName, spName, connection);
+                SqlParameterCollection spParameters = discoverSpParameterSet(schemaName, spName);
                 _paramcache[key] = spParameters;
                 cachedParameters = spParameters;
             }
