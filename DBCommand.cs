@@ -257,6 +257,7 @@ namespace Civic.Core.Data
             {
                 using (var connection = new SqlConnection(sqlDBConnection.ConnectionString))
                 {
+                    connection.Open();
                     executeProcReader(predicate, connection, null);
                 }
             }
