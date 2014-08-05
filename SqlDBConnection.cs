@@ -439,6 +439,7 @@ namespace Civic.Core.Data
             SqlCommand cmd;
             using (var connection = new SqlConnection(_connectionString))
             {
+                connection.Open();
                 cmd = new SqlCommand(spName, connection) { CommandType = CommandType.StoredProcedure };
                 SqlCommandBuilder.DeriveParameters(cmd);               
             }
