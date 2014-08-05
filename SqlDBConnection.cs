@@ -241,6 +241,7 @@ namespace Civic.Core.Data
             {
                 if (_connection == null) _connection = new SqlConnection(_connectionString);
                 cmd.Connection = _connection;
+                _connection.Open();
             }
         }
 
