@@ -223,11 +223,23 @@ namespace Civic.Core.Data
             return new SqlParameter("@RETURN_VALUE", 0) { Direction = ParameterDirection.ReturnValue };
         }
 
+        /// <summary>
+        /// Creates an IDBCommand compatible object for the requested stored procedure
+        /// </summary>
+        /// <param name="schema">the schema name of the store procedure</param>
+        /// <param name="procName">the name of the stored procedure to request the stored procedure for</param>
+        /// <returns>The command object for the requested stored procedure</returns>
         public IDBCommand CreateStoredProcCommand(string schemaName, string procName)
         {
             return new DBCommand(this, schemaName, procName);
         }
 
+        /// <summary>
+        /// Creates an IDBCommand compatible object for a sql command
+        /// </summary>
+        /// <param name="commandText">the command to execute</param>
+        /// <param name="commandType">the type of command being excuted</param>
+        /// <returns>The command object for the requested stored procedure</returns>
         public IDBCommand CreateCommand(string commandText, CommandType commandType)
         {
             return new DBCommand(this, commandText, commandType);

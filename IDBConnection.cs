@@ -150,7 +150,15 @@ namespace Civic.Core.Data
         /// <param name="procName">the name of the stored procedure to request the stored procedure for</param>
         /// <returns>The command object for the requested stored procedure</returns>
         IDBCommand CreateStoredProcCommand(string schema, string procName);
-      
+
+        /// <summary>
+        /// Creates an IDBCommand compatible object for a sql command
+        /// </summary>
+        /// <param name="commandText">the command to execute</param>
+        /// <param name="commandType">the type of command being excuted</param>
+        /// <returns>The command object for the requested stored procedure</returns>
+        IDBCommand CreateCommand(string commandText, CommandType commandType);
+
         /// <summary>
         /// Initializes the database connection
         /// </summary>
