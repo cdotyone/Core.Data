@@ -18,7 +18,6 @@ using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
-using Civic.Core.Logging;
 
 #endregion References
 
@@ -30,10 +29,6 @@ namespace Civic.Core.Data
     public class SqlDBConnection : IDBConnection
     {
         #region Fields
-
-        private static readonly Dictionary<int,List<SqlConnection>> _openConnections = new Dictionary<int, List<SqlConnection>>();
-        private static readonly Dictionary<int, object> _locks = new Dictionary<int, object>();
-        private static readonly object _dictLock = new object();
 
         private static readonly Hashtable _paramcache = Hashtable.Synchronized(new Hashtable());
         private int _commandTimeout = 30;       // timout for commands
@@ -230,38 +225,12 @@ namespace Civic.Core.Data
             return new DBCommand(this, schemaName, procName);
         }
 
-
-        public int ExecuteCommand(string commandText, params object[] parameterValues)
+        public IDBCommand CreateCommand(string commandText, CommandType commandType)
         {
-            //create a command and prepare it for execution
-            var cmd = new SqlCommand { CommandTimeout = CommandTimeout };
-            setCommandConnection(cmd);
-
-            cmd.CommandType = CommandType.Text;
-            cmd.CommandText = commandText;
-
-            foreach (object obj in parameterValues)
-            {
-                var parameter = obj as DbParameter;
-                if (parameter != null)
-                {
-                    var param = parameter;
-                    cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
-                }
-                else
-                {
-                    cmd.Parameters.Add(parameterValues);
-                }
-            }
-
-            int retval = cmd.ExecuteNonQuery();
-            cmd.Connection.Close();
-            cmd.Connection = null;
-
-            return retval;
+            return new DBCommand(this, commandText, commandType);
         }
 
-        private void setCommandConnection(SqlCommand cmd)
+        public void SetCommandConnection(SqlCommand cmd)
         {
             if (_transaction != null)
             {
@@ -273,263 +242,6 @@ namespace Civic.Core.Data
                 if (_connection == null) _connection = new SqlConnection(_connectionString);
                 cmd.Connection = _connection;
             }
-        }
-
-
-        /// <summary>
-        /// Execute a stored procedure via a SqlCommand (that returns no resultset) against the database specified in 
-        /// the connection string using the provided parameter values.  This method will query the database to discover the parameters for the 
-        /// stored procedure (the first time each stored procedure is called), and assign the values based on parameter order.
-        /// </summary>
-        /// <remarks>
-        /// This method provides no access to output parameters or the stored procedure's return value parameter.
-        /// 
-        /// e.g.:  
-        ///  int result = ExecuteNonQuery(connString, "PublishOrders", 24, 36);
-        /// </remarks>
-        /// <param name="schemaName">The schema the store procedure belongs to</param>
-        /// <param name="spName">the name of the stored prcedure</param>
-        /// <param name="parameterValues">an array of objects to be assigned as the input values of the stored procedure</param>
-        /// <returns>an int representing the number of rows affected by the command, returns -1 when there is an error</returns>
-        public int ExecuteNonQuery(string schemaName, string spName, params object[] parameterValues)
-        {
-            //create a command and prepare it for execution
-            using (var cmd = new SqlCommand {CommandTimeout = CommandTimeout})
-            {
-                LastSql = string.Empty;
-                int retval = -1;
-
-                try
-                {
-                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", schemaName, spName))
-                    {
-                        setCommandConnection(cmd);
-
-                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                        var commandParameters = new List<SqlParameter>(getSpParameters(schemaName, spName))
-                            {
-                                new SqlParameter("@RETURN_VALUE", 0) {Direction = ParameterDirection.ReturnValue}
-                            };
-
-                        //assign the provided values to these parameters based on parameter order
-                        LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName,
-                                                 commandParameters.ToArray(), parameterValues);
-                        commandParameters.Clear();
-                        Logger.LogTrace(LoggingBoundaries.Database, "ExecuteNonQuery Called:\n{0}", LastSql);
-
-                        retval = cmd.ExecuteNonQuery();
-                        cmd.Connection.Close();
-                        cmd.Connection = null;
-
-                        return retval;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    cmd.Connection = null;
-                    var ex2 = new SqlDBException(ex, cmd, LastSql);
-                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                        throw ex2;
-                }
-
-                return retval;
-            }
-        }
-
-        /// <summary>
-        /// Execute a stored procedure via a SqlCommand (that returns a resultset) against the database specified in 
-        /// the connection string using the provided parameter values.  This method will query the database to discover the parameters for the 
-        /// stored procedure (the first time each stored procedure is called), and assign the values based on parameter order.
-        /// </summary>
-        /// <remarks>
-        /// This method provides no access to output parameters or the stored procedure's return value parameter.
-        /// 
-        /// e.g.:  
-        ///  SqlDataReader dr = ExecuteReader("GetOrders", 24, 36);
-        /// </remarks>
-        /// <param name="schemaName">The schema the store procedure belongs to</param>
-        /// <param name="spName">the name of the stored procedure</param>
-        /// <param name="parameterValues">an array of objects to be assigned as the input values of the stored procedure</param>
-        /// <returns>a dataset containing the resultset generated by the command</returns>
-        public IDataReader ExecuteReader(string schemaName, string spName, params object[] parameterValues)
-        {
-            //create a command and prepare it for execution
-            var cmd = new SqlCommand { CommandTimeout = CommandTimeout };
-            LastSql = string.Empty;
-
-            try
-            {
-                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", schemaName, spName))
-                {
-                    setCommandConnection(cmd);
-
-                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                    SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
-
-                    //assign the provided values to these parameters based on parameter order
-                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
-                    Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", LastSql);
-
-                    // call ExecuteReader with the appropriate CommandBehavior
-                    SqlDataReader dr = _transaction != null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
-
-                    return dr;
-                }
-            }
-            catch (Exception ex)
-            {
-                cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, LastSql);
-                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                    throw ex2;
-            }
-            return null;
-        }
-
-
-        /// <summary>
-        /// Execute a generic query and return IDataReader
-        /// </summary>
-        /// <remarks>
-        /// This method provides no access to output parameters or the stored procedure's return value parameter.
-        /// 
-        /// e.g.:  
-        ///  SqlDataReader dr = ExecuteReader("SELECT * FROM USER");
-        /// </remarks>
-        /// <param name="commandText">The query to execute</param>
-        /// <returns>a dataset containing the resultset generated by the command</returns>
-        public IDataReader ExecuteReader(string commandText)
-        {
-            //create a command and prepare it for execution
-            var cmd = new SqlCommand { CommandTimeout = CommandTimeout, CommandType = CommandType.Text, CommandText = commandText };
-
-            try
-            {
-                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", commandText))
-                {
-                    setCommandConnection(cmd);
-
-                    Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", commandText);
-
-                    // call ExecuteReader with the appropriate CommandBehavior
-                    SqlDataReader dr = _transaction != null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
-
-                    return dr;
-                }
-            }
-            catch (Exception ex)
-            {
-                cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, commandText);
-                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                    throw ex2;
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// Execute a stored procedure via a SqlCommand (that returns a 1x1 resultset) against the database specified in 
-        /// the connection string using the provided parameter values.  This method will query the database to discover the parameters for the 
-        /// stored procedure (the first time each stored procedure is called), and assign the values based on parameter order.
-        /// </summary>
-        /// <remarks>
-        /// This method provides no access to output parameters or the stored procedure's return value parameter.
-        /// 
-        /// e.g.:  
-        ///  int orderCount = (int)ExecuteScalar(connString, "GetOrderCount", 24, 36);
-        /// </remarks>
-        /// <param name="schemaName">The schema the store procedure belongs to</param>
-        /// <param name="spName">the name of the stored procedure</param>
-        /// <param name="parameterValues">an array of objects to be assigned as the input values of the stored procedure</param>
-        /// <returns>an object containing the value in the 1x1 resultset generated by the command</returns>
-        public object ExecuteScalar(string schemaName, string spName, params object[] parameterValues)
-        {
-            //create a command and prepare it for execution
-            using (var cmd = new SqlCommand {CommandTimeout = CommandTimeout})
-            {
-                LastSql = string.Empty;
-
-                try
-                {
-                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteScalar", schemaName, spName))
-                    {
-                        setCommandConnection(cmd);
-
-                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                        SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
-
-                        //assign the provided values to these parameters based on parameter order
-                        LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters,
-                                                 parameterValues);
-
-                        //execute the command & return the results
-                        object retval = cmd.ExecuteScalar();
-                        Logger.LogTrace(LoggingBoundaries.Database, "ExecuteScalar Called:\n{0}", LastSql);
-                        cmd.Connection.Close();
-                        cmd.Connection = null;
-
-                        return retval;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    cmd.Connection = null;
-                    var ex2 = new SqlDBException(ex, cmd, LastSql);
-                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                        throw ex2;
-                }
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Execute a stored procedure via a SqlCommand (that returns a resultset) against the database specified in 
-        /// the connection string using the provided parameter values.  This method will query the database to discover the parameters for the 
-        /// stored procedure (the first time each stored procedure is called), and assign the values based on parameter order.
-        /// </summary>
-        /// <remarks>
-        /// This method provides no access to output parameters or the stored procedure's return value parameter.
-        /// 
-        /// e.g.:  
-        ///  SqlDataReader dr = ExecuteReader("GetOrders", 24, 36);
-        /// </remarks>
-        /// <param name="schemaName">The schema the store procedure belongs to</param>
-        /// <param name="spName">the name of the stored procedure</param>
-        /// <param name="parameterValues">an array of objects to be assigned as the input values of the stored procedure</param>
-        /// <returns>a dataset containing the resultset generated by the command</returns>
-        public IDataReader ExecuteSequentialReader(string schemaName, string spName, params object[] parameterValues)
-        {
-            //create a command and prepare it for execution
-            var cmd = new SqlCommand { CommandTimeout = CommandTimeout };
-            LastSql = string.Empty;
-
-            try
-            {
-                using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteSequentialReader", schemaName, spName))
-                {
-                    setCommandConnection(cmd);
-
-                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                    SqlParameter[] commandParameters = getSpParameters(schemaName, spName);
-
-                    //assign the provided values to these parameters based on parameter order
-                    LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
-
-                    // call ExecuteReader with the appropriate CommandBehavior
-                    SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
-                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteSequentialReader Called:\n{0}", LastSql);
-
-                    return dr;
-                }
-            }
-            catch (Exception ex)
-            {
-                cmd.Connection = null;
-                var ex2 = new SqlDBException(ex, cmd, LastSql);
-                if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                    throw ex2;
-            }
-            return null;
         }
 
         /// <summary>
@@ -732,7 +444,7 @@ namespace Civic.Core.Data
         /// <param name="schemaName">the schema the store procedure belongs to</param>
         /// <param name="spName">The name of the stored procedure</param>
         /// <returns>An array of SqlParameters</returns>
-        private SqlParameter[] getSpParameters(string schemaName, string spName)
+        internal SqlParameter[] GetSpParameters(string schemaName, string spName)
         {
             if (string.IsNullOrEmpty(spName)) throw new ArgumentNullException("spName");
 
@@ -760,7 +472,7 @@ namespace Civic.Core.Data
         /// <param name="commandParameters">an array of SqlParameters to be associated with the command or 'null' if no parameters are required</param>
         /// <param name="parameterValues">an array of sqlparameter values to assign to the commandParameters</param>
         /// <returns>the last command executed</returns>
-        private string prepareCommand(SqlCommand command, CommandType commandType, string schemaName, string commandText, SqlParameter[] commandParameters, object[] parameterValues)
+        internal string PrepareCommand(SqlCommand command, CommandType commandType, string schemaName, string commandText, SqlParameter[] commandParameters, object[] parameterValues)
         {
             //if we were provided a transaction, assign it.
             if (_transaction != null)
