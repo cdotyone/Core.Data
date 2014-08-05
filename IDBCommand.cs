@@ -11,6 +11,7 @@
 #region References
 
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
@@ -93,6 +94,12 @@ namespace Civic.Core.Data
         /// <param name="direction"><para>One of the <see cref="ParameterDirection"/> values.</para></param>                
         /// <param name="value"><para>The value of the parameter.</para></param>    
         void AddParameter(string name, ParameterDirection direction, object value);
+
+        /// <summary>
+        /// Add a parameter directly to the parameter list
+        /// </summary>
+        /// <param name="parameter">the parameter to add</param>
+        void AddParameter(DbParameter parameter);
 
         /// <summary>
         /// Execute a stored procedure via a SqlCommand (that returns no resultset) against the database specified in 

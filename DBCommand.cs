@@ -152,6 +152,15 @@ namespace Civic.Core.Data
         }
 
         /// <summary>
+        /// Add a parameter directly to the parameter list
+        /// </summary>
+        /// <param name="parameter">the parameter to add</param>
+        public void AddParameter(DbParameter parameter)
+        {
+            _params.Add(parameter);
+        }
+
+        /// <summary>
         /// Clears all of the parameters.  Useful when needing to reuse a command
         /// </summary>
         public void ClearParameters()

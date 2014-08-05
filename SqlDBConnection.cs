@@ -226,7 +226,7 @@ namespace Civic.Core.Data
         /// <summary>
         /// Creates an IDBCommand compatible object for the requested stored procedure
         /// </summary>
-        /// <param name="schema">the schema name of the store procedure</param>
+        /// <param name="schemaName">the schema name of the store procedure</param>
         /// <param name="procName">the name of the stored procedure to request the stored procedure for</param>
         /// <returns>The command object for the requested stored procedure</returns>
         public IDBCommand CreateStoredProcCommand(string schemaName, string procName)
@@ -244,6 +244,28 @@ namespace Civic.Core.Data
         {
             return new DBCommand(this, commandText, commandType);
         }
+
+
+        /// <summary>
+        /// executes a simple parameratized sql command
+        /// </summary>
+        /// <param name="commandText">The sql statement to execute</param>
+        /// <param name="parameters">The parameters to pass with the command</param>
+        public void ExecuteCommand(string commandText, IEnumerable<DbParameter> parameters)
+        {
+            using (var dbCommand = CreateCommand(commandText, CommandType.Text))
+            {
+                if (parameters != null)
+                {
+                    foreach (var dbParameter in parameters)
+                    {
+                        dbCommand.AddParameter(dbParameter);
+                    }
+                }
+                dbCommand.ExecuteNonQuery();
+            }
+        }
+
 
         public void SetCommandConnection(SqlCommand cmd)
         {

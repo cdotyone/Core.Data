@@ -11,6 +11,7 @@
 #region References
 
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
@@ -158,6 +159,13 @@ namespace Civic.Core.Data
         /// <param name="commandType">the type of command being excuted</param>
         /// <returns>The command object for the requested stored procedure</returns>
         IDBCommand CreateCommand(string commandText, CommandType commandType);
+
+        /// <summary>
+        /// executes a simple parameratized sql command
+        /// </summary>
+        /// <param name="commandText">The sql statement to execute</param>
+        /// <param name="parameters">The parameters to pass with the command</param>
+        void ExecuteCommand(string commandText, IEnumerable<DbParameter> parameters);
 
         /// <summary>
         /// Initializes the database connection
