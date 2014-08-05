@@ -252,14 +252,14 @@ namespace Civic.Core.Data
             if (sqlDBConnection == null) return;
 
             if (sqlDBConnection.Transaction != null)
-                executeProcReaderTran(predicate, sqlDBConnection.Transaction);
+                executeProcReaderTran(predicate, sqlDBConnection.Transaction, false);
             else
             {
-                executeProcReader(predicate, sqlDBConnection);
+                executeProcReader(predicate, sqlDBConnection, false);
             }
         }
 
-        private void executeProcReader(Action<IDataReader> predicate, SqlDBConnection dbConn)
+        private void executeProcReader(Action<IDataReader> predicate, SqlDBConnection dbConn, bool sequential)
         {
             using (var connection = new SqlConnection(dbConn.ConnectionString))
             {
@@ -270,26 +270,26 @@ namespace Civic.Core.Data
 
                     try
                     {
-                        //using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", _schema, _procname))
-                        //{
-
-                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                        SqlParameter[] commandParameters = dbConn.GetSpParameters(_schema, _procname);
-
-                        //assign the provided values to these parameters based on parameter order
-                        _dbconn.LastSql = dbConn.PrepareCommand(command, CommandType.StoredProcedure, _schema,
-                                                                         _procname, commandParameters, _params.ToArray());
-                        Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
-
-                        if (connection.State != ConnectionState.Open)
+                        using (Logger.CreateTrace(LoggingBoundaries.Database, "executeProcReader", _schema, _procname))
                         {
-                            connection.Open();
+
+                            //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                            SqlParameter[] commandParameters = dbConn.GetSpParameters(_schema, _procname);
+
+                            //assign the provided values to these parameters based on parameter order
+                            _dbconn.LastSql = dbConn.PrepareCommand(command, CommandType.StoredProcedure, _schema,
+                                                                    _procname, commandParameters, _params.ToArray());
+                            Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
+
+                            if (connection.State != ConnectionState.Open)
+                            {
+                                connection.Open();
+                            }
+                            using (SqlDataReader dr = sequential ? command.ExecuteReader(CommandBehavior.SequentialAccess) : command.ExecuteReader())
+                            {
+                                predicate(dr);
+                            }
                         }
-                        using (SqlDataReader dr = command.ExecuteReader())
-                        {
-                            predicate(dr);
-                        }
-                        //}
                     }
                     catch (Exception ex)
                     {
@@ -301,7 +301,7 @@ namespace Civic.Core.Data
             }
         }
 
-        private void executeProcReaderTran(Action<IDataReader> predicate, SqlTransaction transaction)
+        private void executeProcReaderTran(Action<IDataReader> predicate, SqlTransaction transaction, bool sequential)
         {
             //create a command and prepare it for execution
             using (var command = new SqlCommand { CommandTimeout = _dbconn.CommandTimeout, Connection = transaction.Connection, Transaction = transaction })
@@ -310,23 +310,24 @@ namespace Civic.Core.Data
 
                 try
                 {
-                    //using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", _schema, _procname))
-                    //{
-                    var sqlDBConnection = _dbconn as SqlDBConnection;
-                    if (sqlDBConnection == null) return;
-
-                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                    SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname);
-
-                    //assign the provided values to these parameters based on parameter order
-                    _dbconn.LastSql = sqlDBConnection.PrepareCommand(command, CommandType.StoredProcedure, _schema, _procname, commandParameters, _params.ToArray());
-                    Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
-
-                    using (SqlDataReader dr = command.ExecuteReader())
+                    using (Logger.CreateTrace(LoggingBoundaries.Database, "executeProcReaderTran", _schema, _procname))
                     {
-                        predicate(dr);
+                        var sqlDBConnection = _dbconn as SqlDBConnection;
+                        if (sqlDBConnection == null) return;
+
+                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                        SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname);
+
+                        //assign the provided values to these parameters based on parameter order
+                        _dbconn.LastSql = sqlDBConnection.PrepareCommand(command, CommandType.StoredProcedure, _schema,
+                                                                         _procname, commandParameters, _params.ToArray());
+                        Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
+
+                        using (SqlDataReader dr = sequential ? command.ExecuteReader(CommandBehavior.SequentialAccess) :  command.ExecuteReader())
+                        {
+                            predicate(dr);
+                        }
                     }
-                    //}
                 }
                 catch (Exception ex)
                 {
@@ -405,41 +406,14 @@ namespace Civic.Core.Data
         /// <returns>a dataset containing the resultset generated by the command</returns>
         public void ExecuteSequentialReader(Action<IDataReader> predicate)
         {
-            //create a command and prepare it for execution
-            using (var command = new SqlCommand {CommandTimeout = _dbconn.CommandTimeout})
+            var sqlDBConnection = _dbconn as SqlDBConnection;
+            if (sqlDBConnection == null) return;
+
+            if (sqlDBConnection.Transaction != null)
+                executeProcReaderTran(predicate, sqlDBConnection.Transaction, true);
+            else
             {
-                _dbconn.LastSql = string.Empty;
-
-                try
-                {
-                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteSequentialReader", _schema, _procname))
-                    {
-                        var sqlDBConnection = _dbconn as SqlDBConnection;
-                        if (sqlDBConnection == null) return;
-                        sqlDBConnection.SetCommandConnection(command);
-
-                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                        SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname);
-
-                        //assign the provided values to these parameters based on parameter order
-                        _dbconn.LastSql = sqlDBConnection.PrepareCommand(command, CommandType.StoredProcedure, _schema,
-                                                                         _procname, commandParameters, _params.ToArray());
-
-                        Logger.LogTrace(LoggingBoundaries.Database, "ExecuteSequentialReader Called:\n{0}", _dbconn.LastSql);
-
-                        using (SqlDataReader dr = command.ExecuteReader(CommandBehavior.SequentialAccess))
-                        {
-                            predicate(dr);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    command.Connection = null;
-                    var ex2 = new SqlDBException(ex, command, _dbconn.LastSql);
-                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
-                        throw ex2;
-                }
+                executeProcReader(predicate, sqlDBConnection, true);
             }
         }
 
