@@ -252,35 +252,33 @@ namespace Civic.Core.Data
             if (sqlDBConnection == null) return;
 
             if (sqlDBConnection.Transaction != null)
-                executeProcReader(predicate, sqlDBConnection.Transaction.Connection, sqlDBConnection.Transaction);
+                executeProcReaderTran(predicate, sqlDBConnection.Transaction);
             else
             {
-                using (var connection = new SqlConnection(sqlDBConnection.ConnectionString))
-                {
-                    executeProcReader(predicate, connection, null);
-                }
+                executeProcReader(predicate, sqlDBConnection);
             }
         }
 
-        private void executeProcReader(Action<IDataReader> predicate, SqlConnection connection, SqlTransaction transaction)
+        private void executeProcReader(Action<IDataReader> predicate, SqlDBConnection dbConn)
         {
-            //create a command and prepare it for execution
-            using (var command = new SqlCommand {CommandTimeout = _dbconn.CommandTimeout, Connection = connection, Transaction = transaction})
+            using (var connection = new SqlConnection(dbConn.ConnectionString))
             {
-                _dbconn.LastSql = string.Empty;
-
-                try
+                //create a command and prepare it for execution
+                using (var command = new SqlCommand {CommandTimeout = _dbconn.CommandTimeout, Connection = connection})
                 {
-                    //using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", _schema, _procname))
-                    //{
-                        var sqlDBConnection = _dbconn as SqlDBConnection;
-                        if (sqlDBConnection == null) return;
+                    _dbconn.LastSql = string.Empty;
+
+                    try
+                    {
+                        //using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", _schema, _procname))
+                        //{
 
                         //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                        SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname);
+                        SqlParameter[] commandParameters = dbConn.GetSpParameters(_schema, _procname);
 
                         //assign the provided values to these parameters based on parameter order
-                        _dbconn.LastSql = sqlDBConnection.PrepareCommand(command, CommandType.StoredProcedure, _schema, _procname, commandParameters, _params.ToArray());
+                        _dbconn.LastSql = dbConn.PrepareCommand(command, CommandType.StoredProcedure, _schema,
+                                                                         _procname, commandParameters, _params.ToArray());
                         Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
 
                         if (connection.State != ConnectionState.Open)
@@ -291,6 +289,44 @@ namespace Civic.Core.Data
                         {
                             predicate(dr);
                         }
+                        //}
+                    }
+                    catch (Exception ex)
+                    {
+                        command.Connection = null;
+                        var ex2 = new SqlDBException(ex, command, _dbconn.LastSql);
+                        if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                            throw ex2;
+                    }
+                }
+            }
+        }
+
+        private void executeProcReaderTran(Action<IDataReader> predicate, SqlTransaction transaction)
+        {
+            //create a command and prepare it for execution
+            using (var command = new SqlCommand { CommandTimeout = _dbconn.CommandTimeout, Connection = transaction.Connection, Transaction = transaction })
+            {
+                _dbconn.LastSql = string.Empty;
+
+                try
+                {
+                    //using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", _schema, _procname))
+                    //{
+                    var sqlDBConnection = _dbconn as SqlDBConnection;
+                    if (sqlDBConnection == null) return;
+
+                    //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                    SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname);
+
+                    //assign the provided values to these parameters based on parameter order
+                    _dbconn.LastSql = sqlDBConnection.PrepareCommand(command, CommandType.StoredProcedure, _schema, _procname, commandParameters, _params.ToArray());
+                    Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
+
+                    using (SqlDataReader dr = command.ExecuteReader())
+                    {
+                        predicate(dr);
+                    }
                     //}
                 }
                 catch (Exception ex)
