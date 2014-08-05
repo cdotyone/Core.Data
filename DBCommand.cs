@@ -184,7 +184,6 @@ namespace Civic.Core.Data
                 return executeCommandNonQuery();
             }
 
-            //create a command and prepare it for execution
             using (var cmd = new SqlCommand { CommandTimeout = _dbconn.CommandTimeout })
             {
                 _dbconn.LastSql = string.Empty;
@@ -249,8 +248,24 @@ namespace Civic.Core.Data
                 return;
             }
 
+            var sqlDBConnection = _dbconn as SqlDBConnection;
+            if (sqlDBConnection == null) return;
+
+            if (sqlDBConnection.Transaction != null)
+                executeProcReader(predicate, sqlDBConnection.Transaction.Connection, sqlDBConnection.Transaction);
+            else
+            {
+                using (var connection = new SqlConnection(sqlDBConnection.ConnectionString))
+                {
+                    executeProcReader(predicate, connection, null);
+                }
+            }
+        }
+
+        private void executeProcReader(Action<IDataReader> predicate, SqlConnection connection, SqlTransaction transaction)
+        {
             //create a command and prepare it for execution
-            using (var command = new SqlCommand {CommandTimeout = _dbconn.CommandTimeout})
+            using (var command = new SqlCommand {CommandTimeout = _dbconn.CommandTimeout, Connection = connection, Transaction = transaction})
             {
                 _dbconn.LastSql = string.Empty;
 
@@ -260,7 +275,6 @@ namespace Civic.Core.Data
                     {
                         var sqlDBConnection = _dbconn as SqlDBConnection;
                         if (sqlDBConnection == null) return;
-                        sqlDBConnection.SetCommandConnection(command);
 
                         //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
                         SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname);
@@ -272,7 +286,7 @@ namespace Civic.Core.Data
 
                         using (SqlDataReader dr = command.ExecuteReader())
                         {
-                            predicate(dr);                            
+                            predicate(dr);
                         }
                     }
                 }

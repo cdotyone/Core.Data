@@ -82,10 +82,13 @@ namespace Civic.Core.Data
         /// </summary>
         public string ConnectionString
         {
-            set
-            {
-                _connectionString = value;
-            }
+            set { _connectionString = value; }
+            get { return _connectionString; }
+        }
+
+        public SqlTransaction Transaction
+        {
+            get { return _transaction;  }
         }
 
         /// <summary>
