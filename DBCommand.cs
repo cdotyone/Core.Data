@@ -271,8 +271,8 @@ namespace Civic.Core.Data
 
                 try
                 {
-                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", _schema, _procname))
-                    {
+                    //using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", _schema, _procname))
+                    //{
                         var sqlDBConnection = _dbconn as SqlDBConnection;
                         if (sqlDBConnection == null) return;
 
@@ -291,7 +291,7 @@ namespace Civic.Core.Data
                         {
                             predicate(dr);
                         }
-                    }
+                    //}
                 }
                 catch (Exception ex)
                 {
