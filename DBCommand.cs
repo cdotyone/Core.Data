@@ -278,7 +278,7 @@ namespace Civic.Core.Data
                         if (sqlDBConnection == null) return;
 
                         //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                        SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname);
+                        SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname, connection);
 
                         //assign the provided values to these parameters based on parameter order
                         _dbconn.LastSql = sqlDBConnection.PrepareCommand(command, CommandType.StoredProcedure, _schema,
