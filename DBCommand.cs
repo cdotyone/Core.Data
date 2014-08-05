@@ -293,7 +293,6 @@ namespace Civic.Core.Data
                     }
                     catch (Exception ex)
                     {
-                        command.Connection = null;
                         var ex2 = new SqlDBException(ex, command, _dbconn.LastSql);
                         if (Logger.HandleException(LoggingBoundaries.Database, ex2))
                             throw ex2;
