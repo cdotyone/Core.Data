@@ -257,7 +257,6 @@ namespace Civic.Core.Data
             {
                 using (var connection = new SqlConnection(sqlDBConnection.ConnectionString))
                 {
-                    connection.Open();
                     executeProcReader(predicate, connection, null);
                 }
             }
@@ -278,13 +277,16 @@ namespace Civic.Core.Data
                         if (sqlDBConnection == null) return;
 
                         //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                        SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname, connection);
+                        SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname);
 
                         //assign the provided values to these parameters based on parameter order
-                        _dbconn.LastSql = sqlDBConnection.PrepareCommand(command, CommandType.StoredProcedure, _schema,
-                                                                         _procname, commandParameters, _params.ToArray());
+                        _dbconn.LastSql = sqlDBConnection.PrepareCommand(command, CommandType.StoredProcedure, _schema, _procname, commandParameters, _params.ToArray());
                         Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
 
+                        if (connection.State != ConnectionState.Open)
+                        {
+                            connection.Open();
+                        }
                         using (SqlDataReader dr = command.ExecuteReader())
                         {
                             predicate(dr);
