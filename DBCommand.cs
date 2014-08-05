@@ -37,7 +37,8 @@ namespace Civic.Core.Data
         private readonly List<DbParameter> _params;      // the parameters to be used when excuting the command
         private readonly string _procname;               // the store procedure name to execute
         private string _schema;                          // the schema name of the procedure/command being executed
-        private CommandType _commandType;
+        private readonly CommandType _commandType;
+        private List<SqlDataReader> _readers = new List<SqlDataReader>();
 
         #endregion Fields
 
@@ -162,6 +163,10 @@ namespace Civic.Core.Data
 
         public void Dispose()
         {
+            foreach (var reader in _readers)
+            {
+                reader.Close();
+            }
             if(_command!=null) _command.Dispose();
             _command = null;
             _params.Clear();
@@ -271,8 +276,8 @@ namespace Civic.Core.Data
                     Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
 
                     // call ExecuteReader with the appropriate CommandBehavior
-                    SqlDataReader dr = _command.Transaction != null ? _command.ExecuteReader() : _command.ExecuteReader(CommandBehavior.CloseConnection);
-
+                    SqlDataReader dr = _command.ExecuteReader();
+                    _readers.Add(dr);
                     return dr;
                 }
             }
@@ -373,8 +378,8 @@ namespace Civic.Core.Data
 
                     // call ExecuteReader with the appropriate CommandBehavior
                     SqlDataReader dr = _command.ExecuteReader(CommandBehavior.SequentialAccess);
+                    _readers.Add(dr);
                     Logger.LogTrace(LoggingBoundaries.Database, "ExecuteSequentialReader Called:\n{0}", _dbconn.LastSql);
-
                     return dr;
                 }
             }
@@ -445,8 +450,8 @@ namespace Civic.Core.Data
                     Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _procname);
 
                     // call ExecuteReader with the appropriate CommandBehavior
-                    SqlDataReader dr = _command.Transaction != null ? _command.ExecuteReader() : _command.ExecuteReader(CommandBehavior.CloseConnection);
-
+                    SqlDataReader dr = _command.ExecuteReader();
+                    _readers.Add(dr);
                     return dr;
                 }
             }
