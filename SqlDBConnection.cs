@@ -45,7 +45,7 @@ namespace Civic.Core.Data
         private SqlTransaction _transaction;    // open sql transaction
 
         private SqlConnection _connection;      // sql connection if there is one
-        private int _hash = -1;
+
         #endregion Fields
 
         #region Constructors
@@ -142,96 +142,10 @@ namespace Civic.Core.Data
             addDefaultParameter(CreateParameter(name, value), canBeCached, false);
         }
 
-        public static SqlConnection GetSqlConnection(SqlDBConnection connection)
-        {
-            var hash = connection._hash = connection._connectionString.Replace(" ", "").ToLowerInvariant().GetHashCode();
-            if (!_openConnections.ContainsKey(hash))
-            {
-                lock (_dictLock)
-                {
-                    _openConnections.Add(hash,new List<SqlConnection>());
-                    _locks.Add(hash,new object());
-                }       
-            }
-
-            var retry = 3;
-            while (retry > 0)
-            {
-                SqlConnection sqlConnection = null;
-                lock (_locks[hash])
-                {
-                    var connections = _openConnections[hash];
-                    if (connections.Count > 0)
-                    {
-                        sqlConnection = connections[0];
-                        connections.RemoveAt(0);
-                    }
-                }
-
-                if (sqlConnection == null)
-                {
-                    sqlConnection = new SqlConnection(connection._connectionString);
-
-                    // if we are here that means has to create a new
-                    Logger.LogTrace(LoggingBoundaries.DataLayer, "Creating new SQL Connection");
-                }
-                else
-                {
-                    // if we are here that means we pulled one from the queue.
-                    Logger.LogTrace(LoggingBoundaries.DataLayer, "Reusing SQL Connection");
-                }
-                if (sqlConnection.State == ConnectionState.Broken)
-                {
-                    try
-                    {
-                        sqlConnection.Close();
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogTrace(LoggingBoundaries.DataLayer, ex);
-                    }
-                }
-                if (sqlConnection.State != ConnectionState.Open)
-                {
-                    try
-                    {
-                        if (sqlConnection.State != ConnectionState.Closed) sqlConnection.Close();
-                        sqlConnection.Open();
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogWarning(LoggingBoundaries.DataLayer, ex);
-                    }
-                }
-                retry--;
-                if (sqlConnection.State == ConnectionState.Open) return sqlConnection;
-            }
-            return null;
-        }
-
-        public static void ReleaseSqlConnection(SqlDBConnection connection)
-        {
-            var hash = connection._hash;
-            if (!_openConnections.ContainsKey(hash))
-            {
-                lock (_dictLock)
-                {
-                    _openConnections.Add(hash, new List<SqlConnection>());
-                    _locks.Add(hash, new object());
-                }
-            }
-            lock (_locks[hash])
-            {
-                var connections = _openConnections[hash];
-                connections.Add(connection._connection);
-                connection._connection = null;
-            }
-        }
-
         public void BeginTrans()
         {
             if (_transaction != null) return;
-            var connection = GetSqlConnection(this);
+            var connection = new SqlConnection(_connectionString);
             _transaction = connection.BeginTransaction();
         }
 
@@ -270,7 +184,7 @@ namespace Civic.Core.Data
         {
             if (_connection != null)
             {
-                ReleaseSqlConnection(this);
+                _connection.Close();
             }
             _connection = null;
         }
@@ -341,7 +255,8 @@ namespace Civic.Core.Data
             }
 
             int retval = cmd.ExecuteNonQuery();
-            ReleaseSqlConnection(this);
+            cmd.Connection.Close();
+            cmd.Connection = null;
 
             return retval;
         }
@@ -355,7 +270,7 @@ namespace Civic.Core.Data
             }
             else
             {
-                if (_connection == null) _connection = GetSqlConnection(this);
+                if (_connection == null) _connection = new SqlConnection(_connectionString);
                 cmd.Connection = _connection;
             }
         }
@@ -403,8 +318,8 @@ namespace Civic.Core.Data
                         Logger.LogTrace(LoggingBoundaries.Database, "ExecuteNonQuery Called:\n{0}", LastSql);
 
                         retval = cmd.ExecuteNonQuery();
-
-                        ReleaseSqlConnection(this);
+                        cmd.Connection.Close();
+                        cmd.Connection = null;
 
                         return retval;
                     }
@@ -455,7 +370,9 @@ namespace Civic.Core.Data
                     LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
                     Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", LastSql);
 
-                    var dr = cmd.ExecuteReader();
+                    // call ExecuteReader with the appropriate CommandBehavior
+                    SqlDataReader dr = _transaction != null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
+
                     return dr;
                 }
             }
@@ -494,7 +411,9 @@ namespace Civic.Core.Data
 
                     Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", commandText);
 
-                    var dr = cmd.ExecuteReader();
+                    // call ExecuteReader with the appropriate CommandBehavior
+                    SqlDataReader dr = _transaction != null ? cmd.ExecuteReader() : cmd.ExecuteReader(CommandBehavior.CloseConnection);
+
                     return dr;
                 }
             }
@@ -546,8 +465,8 @@ namespace Civic.Core.Data
                         //execute the command & return the results
                         object retval = cmd.ExecuteScalar();
                         Logger.LogTrace(LoggingBoundaries.Database, "ExecuteScalar Called:\n{0}", LastSql);
-
-                        ReleaseSqlConnection(this);
+                        cmd.Connection.Close();
+                        cmd.Connection = null;
 
                         return retval;
                     }
@@ -596,7 +515,10 @@ namespace Civic.Core.Data
                     //assign the provided values to these parameters based on parameter order
                     LastSql = prepareCommand(cmd, CommandType.StoredProcedure, schemaName, spName, commandParameters, parameterValues);
 
-                    var dr = cmd.ExecuteReader();
+                    // call ExecuteReader with the appropriate CommandBehavior
+                    SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteSequentialReader Called:\n{0}", LastSql);
+
                     return dr;
                 }
             }
