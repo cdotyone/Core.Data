@@ -302,6 +302,8 @@ namespace Civic.Core.Data
                             {
                                 predicate(dr);
                             }
+
+                            int i = 1;  // debug line
                         }
                     }
                     catch (Exception ex)
