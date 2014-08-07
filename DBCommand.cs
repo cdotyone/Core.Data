@@ -61,6 +61,7 @@ namespace Civic.Core.Data
         {
             _dbconn = dbconn;
             _procname = commandText;
+            _params = new List<DbParameter>();
             _commandType = commandType;
         }
 
