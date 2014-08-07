@@ -519,19 +519,6 @@ namespace Civic.Core.Data
         /// <returns>the last command executed</returns>
         internal string PrepareCommand(SqlCommand command, CommandType commandType, string schemaName, string commandText, SqlParameter[] commandParameters, object[] parameterValues)
         {
-            //if we were provided a transaction, assign it.
-            if (_transaction != null)
-            {
-                command.Connection = _transaction.Connection;
-                command.Transaction = _transaction;
-            }
-            else
-            {
-                //associate the connection with the command
-                command.Connection = new SqlConnection(_connectionString);
-                command.Connection.Open();
-            }
-
             //set the command text (stored procedure name or SQL statement)
             string[] parts = commandText.Split('.');
             if (parts.Length < 2) parts = new[] { schemaName, commandText };
