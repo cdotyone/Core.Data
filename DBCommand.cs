@@ -219,8 +219,11 @@ namespace Civic.Core.Data
                         Logger.LogTrace(LoggingBoundaries.Database, "ExecuteNonQuery Called:\n{0}", _dbconn.LastSql);
 
                         retval = cmd.ExecuteNonQuery();
-                        cmd.Connection.Close();
-                        cmd.Connection = null;
+                        if (cmd.Transaction == null)
+                        {
+                            cmd.Connection.Close();
+                            cmd.Connection = null;
+                        }
 
                         return retval;
                     }
@@ -384,8 +387,12 @@ namespace Civic.Core.Data
                         //execute the command & return the results
                         object retval = cmd.ExecuteScalar();
                         Logger.LogTrace(LoggingBoundaries.Database, "ExecuteScalar Called:\n{0}", _dbconn.LastSql);
-                        cmd.Connection.Close();
-                        cmd.Connection = null;
+                        if (cmd.Transaction == null)
+                        {
+                            cmd.Connection.Close();
+                            cmd.Connection = null;
+                        }
+
 
                         return retval;
                     }
