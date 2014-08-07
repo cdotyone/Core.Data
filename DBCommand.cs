@@ -440,24 +440,29 @@ namespace Civic.Core.Data
         private int executeCommandNonQuery()
         {
             //create a command and prepare it for execution
-            var cmd = new SqlCommand { CommandTimeout = _dbconn.CommandTimeout };
-            var sqlDBConnection = _dbconn as SqlDBConnection;
-            if (sqlDBConnection == null) return -1;
-            sqlDBConnection.SetCommandConnection(cmd);
-
-            cmd.CommandType = _commandType;
-            cmd.CommandText = _procname;
-
-            foreach (DbParameter param in _params)
+            using (var cmd = new SqlCommand { CommandTimeout = _dbconn.CommandTimeout })
             {
-                cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
+                var sqlDBConnection = _dbconn as SqlDBConnection;
+                if (sqlDBConnection == null) return -1;
+                sqlDBConnection.SetCommandConnection(cmd);
+
+                cmd.CommandType = _commandType;
+                cmd.CommandText = _procname;
+
+                foreach (DbParameter param in _params)
+                {
+                    cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
+                }
+
+                int retval = cmd.ExecuteNonQuery();
+                if (cmd.Transaction == null)
+                {
+                    cmd.Connection.Close();
+                    cmd.Connection = null;
+                }
+
+                return retval;
             }
-
-            int retval = cmd.ExecuteNonQuery();
-            cmd.Connection.Close();
-            cmd.Connection = null;
-
-            return retval;
         }
 
         /// <summary>
