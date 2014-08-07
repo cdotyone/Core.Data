@@ -146,6 +146,7 @@ namespace Civic.Core.Data
             var connection = new SqlConnection(_connectionString);
             connection.Open();
             _transaction = connection.BeginTransaction();
+            _connection = connection;
         }
 
         public IDBConnection Clone()
@@ -272,7 +273,7 @@ namespace Civic.Core.Data
         {
             if (_transaction != null)
             {
-                cmd.Connection = _transaction.Connection;
+                cmd.Connection = _connection;
                 cmd.Transaction = _transaction;
             }
             else
