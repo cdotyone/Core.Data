@@ -304,6 +304,7 @@ namespace Civic.Core.Data
                             }
 
                             int i = 1;  // debug line
+                            i++;
                         }
                     }
                     catch (Exception ex)
