@@ -451,10 +451,41 @@ namespace Civic.Core.Data
 
                 foreach (DbParameter param in _params)
                 {
-                    cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
+                    if (param.Direction == ParameterDirection.InputOutput || param.Direction == ParameterDirection.InputOutput)
+                    {
+                        var param2 = new SqlParameter();
+                        param2.ParameterName = param.ParameterName.Replace("@", "");
+                        param2.Direction = param.Direction;
+                        param2.Value = param.Value;
+                        var type = param.Value.GetType();
+
+                        if (type == typeof (Int32) || type == typeof (int)) param2.DbType = DbType.Int32;
+                        else if (type == typeof (Int64) || type == typeof (long)) param2.DbType = DbType.Int64;
+                        else if (type == typeof(double)) param2.DbType = DbType.Double;
+                        else if (type == typeof(float)) param2.DbType = DbType.Decimal;
+                        else if (type == typeof (DateTime)) param2.DbType = DbType.DateTime;
+                        else
+                        {
+                            param2.DbType = DbType.String;
+                            if (param.Value!=null) param2.Value = param.Value.ToString();
+                        }
+                    }
+                    else cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
                 }
 
                 int retval = cmd.ExecuteNonQuery();
+
+                foreach (DbParameter param in _params)
+                {
+                    if (param.Direction != ParameterDirection.InputOutput && param.Direction != ParameterDirection.InputOutput) continue;
+                    foreach (SqlParameter sparam in cmd.Parameters)
+                    {
+                        if (sparam.ParameterName != param.ParameterName.Replace("@", "")) continue;
+                        param.Value = sparam.Value;
+                        break;
+                    }
+                }
+
                 if (cmd.Transaction == null)
                 {
                     cmd.Connection.Close();
