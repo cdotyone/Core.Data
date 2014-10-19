@@ -471,6 +471,8 @@ namespace Civic.Core.Data
                             param2.DbType = DbType.String;
                             if (param.Value!=null) param2.Value = param.Value.ToString();
                         }
+
+                        cmd.Parameters.Add(param2);
                     }
                     else cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
                 }
@@ -479,7 +481,7 @@ namespace Civic.Core.Data
 
                 foreach (DbParameter param in _params)
                 {
-                    if (param.Direction != ParameterDirection.InputOutput && param.Direction != ParameterDirection.InputOutput) continue;
+                    if (param.Direction != ParameterDirection.Output && param.Direction != ParameterDirection.InputOutput) continue;
                     foreach (SqlParameter sparam in cmd.Parameters)
                     {
                         if (sparam.ParameterName != param.ParameterName.Replace("@", "")) continue;
