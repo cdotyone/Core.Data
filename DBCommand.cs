@@ -451,12 +451,14 @@ namespace Civic.Core.Data
 
                 foreach (DbParameter param in _params)
                 {
-                    if (param.Direction == ParameterDirection.InputOutput || param.Direction == ParameterDirection.InputOutput)
+                    if (param.Direction == ParameterDirection.Output || param.Direction == ParameterDirection.InputOutput)
                     {
-                        var param2 = new SqlParameter();
-                        param2.ParameterName = param.ParameterName.Replace("@", "");
-                        param2.Direction = param.Direction;
-                        param2.Value = param.Value;
+                        var param2 = new SqlParameter
+                            {
+                                ParameterName = param.ParameterName.Replace("@", ""),
+                                Direction = param.Direction,
+                                Value = param.Value
+                            };
                         var type = param.Value.GetType();
 
                         if (type == typeof (Int32) || type == typeof (int)) param2.DbType = DbType.Int32;
