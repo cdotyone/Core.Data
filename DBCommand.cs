@@ -292,7 +292,7 @@ namespace Civic.Core.Data
                             //assign the provided values to these parameters based on parameter order
                             _dbconn.LastSql = dbConn.PrepareCommand(command, CommandType.StoredProcedure, _schema,
                                                                     _procname, commandParameters, _params.ToArray());
-                            Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
+                                Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
 
                             if (connection.State != ConnectionState.Open)
                             {
