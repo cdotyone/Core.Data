@@ -561,8 +561,7 @@ namespace Civic.Core.Data
 
         public void Dispose()
         {
-            if (_transaction != null) _transaction.Rollback();
-            Close();
+            if (_transaction == null) Close();
         }
 
         #endregion Methods
