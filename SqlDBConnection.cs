@@ -149,6 +149,15 @@ namespace Civic.Core.Data
             _connection = connection;
         }
 
+        public void BeginTrans(bool allowDirty)
+        {
+            if (_transaction != null) return;
+            var connection = new SqlConnection(_connectionString);
+            connection.Open();
+            _transaction = connection.BeginTransaction(allowDirty ? IsolationLevel.ReadUncommitted : IsolationLevel.ReadCommitted);
+            _connection = connection;
+        }
+
         public IDBConnection Clone()
         {
             var newConn = new SqlDBConnection();

@@ -105,6 +105,12 @@ namespace Civic.Core.Data
         /// </summary>
         void BeginTrans();
 
+
+        /// <summary>
+        /// start a sql transaction
+        /// </summary>
+        void BeginTrans(bool allowDirty);
+
         /// <summary>
         /// clones the database connection
         /// </summary>
