@@ -158,6 +158,11 @@ namespace Civic.Core.Data
             _connection = connection;
         }
 
+        public bool IsInTransaction
+        {
+            get { return _transaction != null; }
+        }
+
         public IDBConnection Clone()
         {
             var newConn = new SqlDBConnection();
