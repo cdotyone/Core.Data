@@ -247,6 +247,7 @@ namespace Civic.Core.Data
         /// <returns>The command object for the requested stored procedure</returns>
         public IDBCommand CreateStoredProcCommand(string schemaName, string procName)
         {
+            schemaName = DataConfig.Current.GetSchemaName(schemaName);
             return new DBCommand(this, schemaName, procName);
         }
 

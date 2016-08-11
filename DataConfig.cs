@@ -42,10 +42,30 @@ namespace Civic.Core.Data
             get { return "data"; }
         }
 
-        public string GetConnectionStringName(string name)
+        public string GetConnectionName(string name)
         {
-            var connectionName = Attributes.ContainsKey(name) ? Attributes[name] : _default;
-            if (string.IsNullOrEmpty(connectionName)) return name;
+            var connectionName = name;
+
+            if (Children.ContainsKey("connection"))
+            {
+                var attributes = Children["connection"].Attributes;
+                connectionName = attributes.ContainsKey(name) ? attributes[name] : _default;
+            } else if (!string.IsNullOrEmpty(_default)) return _default;
+
+            return connectionName;
+        }
+
+        public string GetSchemaName(string name)
+        {
+            var connectionName = name;
+
+            if (Children.ContainsKey("schema"))
+            {
+                var attributes = Children["schema"].Attributes;
+                connectionName = attributes.ContainsKey(name) ? attributes[name] : _default;
+            }
+            else if (!string.IsNullOrEmpty(_default)) return _default;
+
             return connectionName;
         }
     }
