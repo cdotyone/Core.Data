@@ -52,21 +52,21 @@ namespace Civic.Core.Data
                 connectionName = attributes.ContainsKey(name) ? attributes[name] : _default;
             } else if (!string.IsNullOrEmpty(_default)) return _default;
 
-            return connectionName;
+            return string.IsNullOrEmpty(connectionName) ? name : connectionName;
         }
 
         public string GetSchemaName(string name)
         {
-            var connectionName = name;
+            var schemaName = name;
 
             if (Children.ContainsKey("schema"))
             {
                 var attributes = Children["schema"].Attributes;
-                connectionName = attributes.ContainsKey(name) ? attributes[name] : _default;
+                schemaName = attributes.ContainsKey(name) ? attributes[name] : _default;
             }
             else if (!string.IsNullOrEmpty(_default)) return _default;
 
-            return connectionName;
+            return string.IsNullOrEmpty(schemaName) ? name : schemaName;
         }
     }
 }
