@@ -31,6 +31,8 @@ namespace Civic.Core.Data
         {
             try
             {
+                name = DataConfig.Current.GetConnectionStringName(name);
+
                 if (ConfigurationManager.ConnectionStrings[name] == null)
                     throw new ConfigurationErrorsException(string.Format("could not locate connectionString: {0}", name));
                 return new SqlDBConnection(ConfigurationManager.ConnectionStrings[name].ConnectionString);
@@ -97,6 +99,8 @@ namespace Civic.Core.Data
         {
             try
             {
+                name = DataConfig.Current.GetConnectionStringName(name);
+
                 var source = ConfigurationFactory.Create(sourceName);
                 if (source == null) return null;
                 var settings = source.GetConnectionString(type, name);
