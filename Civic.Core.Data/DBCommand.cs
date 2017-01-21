@@ -449,6 +449,8 @@ namespace Civic.Core.Data
                 cmd.CommandType = _commandType;
                 cmd.CommandText = _procname;
 
+                _dbconn.LastSql = cmd.CommandText;
+
                 foreach (DbParameter param in _params)
                 {
                     if (param.Direction == ParameterDirection.Output || param.Direction == ParameterDirection.InputOutput)
@@ -476,6 +478,8 @@ namespace Civic.Core.Data
                     }
                     else cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
                 }
+
+                Logger.LogTrace(LoggingBoundaries.Database, "ExecuteCommandNonQuery Called:\n{0}", _dbconn.LastSql);
 
                 int retval = cmd.ExecuteNonQuery();
 
