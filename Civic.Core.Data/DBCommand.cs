@@ -440,68 +440,83 @@ namespace Civic.Core.Data
         private int executeCommandNonQuery()
         {
             //create a command and prepare it for execution
-            using (var cmd = new SqlCommand { CommandTimeout = _dbconn.CommandTimeout })
+            using (var cmd = new SqlCommand {CommandTimeout = _dbconn.CommandTimeout})
             {
-                var sqlDBConnection = _dbconn as SqlDBConnection;
-                if (sqlDBConnection == null) return -1;
-                sqlDBConnection.SetCommandConnection(cmd);
-
-                cmd.CommandType = _commandType;
-                cmd.CommandText = _procname;
-
-                _dbconn.LastSql = cmd.CommandText;
-
-                foreach (DbParameter param in _params)
+                try
                 {
-                    if (param.Direction == ParameterDirection.Output || param.Direction == ParameterDirection.InputOutput)
+                    var sqlDBConnection = _dbconn as SqlDBConnection;
+                    if (sqlDBConnection == null) return -1;
+                    sqlDBConnection.SetCommandConnection(cmd);
+
+                    cmd.CommandType = _commandType;
+                    cmd.CommandText = _procname;
+
+                    _dbconn.LastSql = cmd.CommandText;
+
+                    foreach (DbParameter param in _params)
                     {
-                        var param2 = new SqlParameter
+                        if (param.Direction == ParameterDirection.Output ||
+                            param.Direction == ParameterDirection.InputOutput)
+                        {
+                            var param2 = new SqlParameter
                             {
                                 ParameterName = param.ParameterName.Replace("@", ""),
                                 Direction = param.Direction,
                                 Value = param.Value
                             };
-                        var type = param.Value.GetType();
+                            var type = param.Value.GetType();
 
-                        if (type == typeof (Int32) || type == typeof (int)) param2.DbType = DbType.Int32;
-                        else if (type == typeof (Int64) || type == typeof (long)) param2.DbType = DbType.Int64;
-                        else if (type == typeof(double)) param2.DbType = DbType.Double;
-                        else if (type == typeof(float)) param2.DbType = DbType.Decimal;
-                        else if (type == typeof (DateTime)) param2.DbType = DbType.DateTime;
-                        else
-                        {
-                            param2.DbType = DbType.String;
-                            if (param.Value!=null) param2.Value = param.Value.ToString();
+                            if (type == typeof(Int32) || type == typeof(int)) param2.DbType = DbType.Int32;
+                            else if (type == typeof(Int64) || type == typeof(long)) param2.DbType = DbType.Int64;
+                            else if (type == typeof(double)) param2.DbType = DbType.Double;
+                            else if (type == typeof(float)) param2.DbType = DbType.Decimal;
+                            else if (type == typeof(DateTime)) param2.DbType = DbType.DateTime;
+                            else
+                            {
+                                param2.DbType = DbType.String;
+                                if (param.Value != null) param2.Value = param.Value.ToString();
+                            }
+
+                            cmd.Parameters.Add(param2);
                         }
-
-                        cmd.Parameters.Add(param2);
+                        else cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
                     }
-                    else cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
-                }
 
-                Logger.LogTrace(LoggingBoundaries.Database, "ExecuteCommandNonQuery Called:\n{0}", _dbconn.LastSql);
+                    Logger.LogTrace(LoggingBoundaries.Database, "ExecuteCommandNonQuery Called:\n{0}", _dbconn.LastSql);
 
-                int retval = cmd.ExecuteNonQuery();
+                    int retval = cmd.ExecuteNonQuery();
 
-                foreach (DbParameter param in _params)
-                {
-                    if (param.Direction != ParameterDirection.Output && param.Direction != ParameterDirection.InputOutput) continue;
-                    foreach (SqlParameter sparam in cmd.Parameters)
+                    foreach (DbParameter param in _params)
                     {
-                        if (sparam.ParameterName != param.ParameterName.Replace("@", "")) continue;
-                        param.Value = sparam.Value;
-                        break;
+                        if (param.Direction != ParameterDirection.Output &&
+                            param.Direction != ParameterDirection.InputOutput) continue;
+                        foreach (SqlParameter sparam in cmd.Parameters)
+                        {
+                            if (sparam.ParameterName != param.ParameterName.Replace("@", "")) continue;
+                            param.Value = sparam.Value;
+                            break;
+                        }
                     }
-                }
 
-                if (cmd.Transaction == null)
+                    if (cmd.Transaction == null)
+                    {
+                        cmd.Connection.Close();
+                        cmd.Connection = null;
+                    }
+
+                    return retval;
+
+                }
+                catch(Exception ex)
                 {
-                    cmd.Connection.Close();
                     cmd.Connection = null;
+                    var ex2 = new SqlDBException(ex, cmd, _dbconn.LastSql);
+                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                        throw ex2;
                 }
-
-                return retval;
             }
+
+            return -1;
         }
 
         /// <summary>
