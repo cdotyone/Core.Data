@@ -16,6 +16,7 @@ using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Threading;
 using Civic.Core.Logging;
 
 #endregion References
@@ -241,6 +242,41 @@ namespace Civic.Core.Data
             }
         }
 
+
+        public int ResilentExecuteNonQuery(Action<IDBCommand> sqlCommandBuild, Action<IDBCommand> sqlCommand, string dbcode, string schema, string procname, int retries = 3)
+        {
+            Exception lastException = null;
+
+            while (retries > 0)
+            {
+                try
+                {
+                    using (var database = DatabaseFactory.CreateDatabase(dbcode))
+                    {
+                        using (var command = database.CreateStoredProcCommand(schema, procname))
+                        {
+                            sqlCommandBuild(command);
+                            var retval = command.ExecuteNonQuery();
+                            sqlCommand(command);
+
+                            lastException = null;
+                            return retval;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    retries--;
+                    Logger.HandleException(LoggingBoundaries.DataLayer, ex);
+                    lastException = ex;
+                    Thread.Sleep(100);
+                }
+            }
+
+            if (lastException != null) throw lastException;
+            return -1;
+        }
+
         /// <summary>
         /// Execute a stored procedure via a SqlCommand (that returns a resultset) against the database specified in 
         /// the connection string using the provided parameter values.  This method will query the database to discover the parameters for the 
@@ -271,6 +307,38 @@ namespace Civic.Core.Data
                 executeProcReader(predicate, sqlDBConnection, false);
             }
         }
+
+        public void ResilentExecuteReader(Action<IDBCommand> sqlCommandBuild, Action<IDataReader> reader, string dbcode, string schema, string procname, int retries = 3)
+        {
+            Exception lastException = null;
+
+            while (retries > 0)
+            {
+                try
+                {
+                    using (var database = DatabaseFactory.CreateDatabase(dbcode))
+                    {
+                        using (var command = database.CreateStoredProcCommand(schema, procname))
+                        {
+                            sqlCommandBuild(command);
+                            command.ExecuteReader(reader);
+                            lastException = null;
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    retries--;
+                    Logger.HandleException(LoggingBoundaries.DataLayer, ex);
+                    lastException = ex;
+                    Thread.Sleep(100);
+                }
+            }
+
+            if (lastException != null) throw lastException;
+        }
+
 
         private void executeProcReader(Action<IDataReader> predicate, SqlDBConnection dbConn, bool sequential)
         {
