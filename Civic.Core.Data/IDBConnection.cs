@@ -179,6 +179,31 @@ namespace Civic.Core.Data
         /// <param name="parameters">The parameters to pass with the command</param>
         void ExecuteCommand(string commandText, IEnumerable<DbParameter> parameters);
 
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sqlCommandBuild"></param>
+        /// <param name="sqlCommand"></param>
+        /// <param name="dbcode"></param>
+        /// <param name="schema"></param>
+        /// <param name="procname"></param>
+        /// <param name="retries"></param>
+        /// <returns></returns>
+        int ResilentExecuteNonQuery(Action<IDBCommand> sqlCommandBuild, Action<IDBCommand> sqlCommand, string schema, string procname, int retries = 3);
+        
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sqlCommandBuild"></param>
+        /// <param name="reader"></param>
+        /// <param name="dbcode"></param>
+        /// <param name="schema"></param>
+        /// <param name="procname"></param>
+        /// <param name="retries"></param>
+        void ResilentExecuteReader(Action<IDBCommand> sqlCommandBuild, Action<IDataReader> reader, string schema, string procname, int retries = 3);
+
+
         /// <summary>
         /// Initializes the database connection
         /// </summary>

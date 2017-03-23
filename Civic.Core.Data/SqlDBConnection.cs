@@ -18,6 +18,8 @@ using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using Civic.Core.Logging;
 
 #endregion References
 
@@ -260,6 +262,73 @@ namespace Civic.Core.Data
         public IDBCommand CreateCommand(string commandText, CommandType commandType)
         {
             return new DBCommand(this, commandText, commandType);
+        }
+
+
+        public int ResilentExecuteNonQuery(Action<IDBCommand> sqlCommandBuild, Action<IDBCommand> sqlCommand, string schema, string procname, int retries = 3)
+        {
+            Exception lastException = null;
+
+            while (retries > 0)
+            {
+                try
+                {
+                    using (var database = new SqlDBConnection(this.ConnectionString))
+                    {
+                        using (var command = database.CreateStoredProcCommand(schema, procname))
+                        {
+                            sqlCommandBuild(command);
+                            var retval = command.ExecuteNonQuery();
+                            sqlCommand(command);
+
+                            lastException = null;
+                            return retval;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    retries--;
+                    Logger.HandleException(LoggingBoundaries.DataLayer, ex);
+                    lastException = ex;
+                    Thread.Sleep(100);
+                }
+            }
+
+            if (lastException != null) throw lastException;
+            return -1;
+        }
+
+
+        public void ResilentExecuteReader(Action<IDBCommand> sqlCommandBuild, Action<IDataReader> reader, string schema, string procname, int retries = 3)
+        {
+            Exception lastException = null;
+
+            while (retries > 0)
+            {
+                try
+                {
+                    using (var database = new SqlDBConnection(this.ConnectionString))
+                    {
+                        using (var command = database.CreateStoredProcCommand(schema, procname))
+                        {
+                            sqlCommandBuild(command);
+                            command.ExecuteReader(reader);
+                            lastException = null;
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    retries--;
+                    Logger.HandleException(LoggingBoundaries.DataLayer, ex);
+                    lastException = ex;
+                    Thread.Sleep(100);
+                }
+            }
+
+            if (lastException != null) throw lastException;
         }
 
 

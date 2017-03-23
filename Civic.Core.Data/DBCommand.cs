@@ -243,46 +243,6 @@ namespace Civic.Core.Data
         }
 
 
-        public int ResilentExecuteNonQuery(Action<IDBCommand> sqlCommandBuild, Action<IDBCommand> sqlCommand, IDBConnection connection, string schema, string procname, int retries = 3)
-        {
-            Exception lastException = null;
-
-            while (retries > 0)
-            {
-                try
-                {
-                    var connection2 = connection as SqlDBConnection;
-                    if (connection2 == null)
-                    {
-                        retries = 0;
-                        throw new Exception("connection must be a valid SqlDBConnection");
-                    }
-                    using (var database = new SqlDBConnection(connection2.ConnectionString))
-                    {
-                        using (var command = database.CreateStoredProcCommand(schema, procname))
-                        {
-                            sqlCommandBuild(command);
-                            var retval = command.ExecuteNonQuery();
-                            sqlCommand(command);
-
-                            lastException = null;
-                            return retval;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    retries--;
-                    Logger.HandleException(LoggingBoundaries.DataLayer, ex);
-                    lastException = ex;
-                    Thread.Sleep(100);
-                }
-            }
-
-            if (lastException != null) throw lastException;
-            return -1;
-        }
-
         /// <summary>
         /// Execute a stored procedure via a SqlCommand (that returns a resultset) against the database specified in 
         /// the connection string using the provided parameter values.  This method will query the database to discover the parameters for the 
@@ -313,44 +273,6 @@ namespace Civic.Core.Data
                 executeProcReader(predicate, sqlDBConnection, false);
             }
         }
-
-        public void ResilentExecuteReader(Action<IDBCommand> sqlCommandBuild, Action<IDataReader> reader, IDBConnection connection, string schema, string procname, int retries = 3)
-        {
-            Exception lastException = null;
-
-            while (retries > 0)
-            {
-                try
-                {
-                    var connection2 = connection as SqlDBConnection;
-                    if (connection2 == null)
-                    {
-                        retries = 0;
-                        throw new Exception("connection must be a valid SqlDBConnection");
-                    }
-                    using (var database = new SqlDBConnection(connection2.ConnectionString))
-                    {
-                        using (var command = database.CreateStoredProcCommand(schema, procname))
-                        {
-                            sqlCommandBuild(command);
-                            command.ExecuteReader(reader);
-                            lastException = null;
-                            return;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    retries--;
-                    Logger.HandleException(LoggingBoundaries.DataLayer, ex);
-                    lastException = ex;
-                    Thread.Sleep(100);
-                }
-            }
-
-            if (lastException != null) throw lastException;
-        }
-
 
         private void executeProcReader(Action<IDataReader> predicate, SqlDBConnection dbConn, bool sequential)
         {
