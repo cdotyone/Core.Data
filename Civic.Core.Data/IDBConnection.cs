@@ -41,6 +41,7 @@ namespace Civic.Core.Data
         string ConnectionString
         {
             set;
+            get;
         }
 
         /// <summary>

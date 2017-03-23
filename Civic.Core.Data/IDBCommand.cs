@@ -124,7 +124,7 @@ namespace Civic.Core.Data
         /// <param name="procname"></param>
         /// <param name="retries"></param>
         /// <returns></returns>
-        int ResilentExecuteNonQuery(Action<IDBCommand> sqlCommandBuild, Action<IDBCommand> sqlCommand, string dbcode, string schema, string procname, int retries = 3);
+        int ResilentExecuteNonQuery(Action<IDBCommand> sqlCommandBuild, Action<IDBCommand> sqlCommand, IDBConnection connection, string schema, string procname, int retries = 3);
 
         /// <summary>
         /// Execute a stored procedure via a SqlCommand (that returns a resultset) against the database specified in 
@@ -148,7 +148,7 @@ namespace Civic.Core.Data
         /// <param name="schema"></param>
         /// <param name="procname"></param>
         /// <param name="retries"></param>
-        void ResilentExecuteReader(Action<IDBCommand> sqlCommandBuild, Action<IDataReader> reader, string dbcode,string schema, string procname, int retries = 3);
+        void ResilentExecuteReader(Action<IDBCommand> sqlCommandBuild, Action<IDataReader> reader, IDBConnection connection, string schema, string procname, int retries = 3);
 
         /// <summary>
         /// Execute a stored procedure via a SqlCommand (that returns a 1x1 resultset) against the database specified in 

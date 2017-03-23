@@ -243,7 +243,7 @@ namespace Civic.Core.Data
         }
 
 
-        public int ResilentExecuteNonQuery(Action<IDBCommand> sqlCommandBuild, Action<IDBCommand> sqlCommand, string dbcode, string schema, string procname, int retries = 3)
+        public int ResilentExecuteNonQuery(Action<IDBCommand> sqlCommandBuild, Action<IDBCommand> sqlCommand, IDBConnection connection, string schema, string procname, int retries = 3)
         {
             Exception lastException = null;
 
@@ -251,7 +251,13 @@ namespace Civic.Core.Data
             {
                 try
                 {
-                    using (var database = DatabaseFactory.CreateDatabase(dbcode))
+                    var connection2 = connection as SqlDBConnection;
+                    if (connection2 == null)
+                    {
+                        retries = 0;
+                        throw new Exception("connection must be a valid SqlDBConnection");
+                    }
+                    using (var database = new SqlDBConnection(connection2.ConnectionString))
                     {
                         using (var command = database.CreateStoredProcCommand(schema, procname))
                         {
@@ -308,7 +314,7 @@ namespace Civic.Core.Data
             }
         }
 
-        public void ResilentExecuteReader(Action<IDBCommand> sqlCommandBuild, Action<IDataReader> reader, string dbcode, string schema, string procname, int retries = 3)
+        public void ResilentExecuteReader(Action<IDBCommand> sqlCommandBuild, Action<IDataReader> reader, IDBConnection connection, string schema, string procname, int retries = 3)
         {
             Exception lastException = null;
 
@@ -316,7 +322,13 @@ namespace Civic.Core.Data
             {
                 try
                 {
-                    using (var database = DatabaseFactory.CreateDatabase(dbcode))
+                    var connection2 = connection as SqlDBConnection;
+                    if (connection2 == null)
+                    {
+                        retries = 0;
+                        throw new Exception("connection must be a valid SqlDBConnection");
+                    }
+                    using (var database = new SqlDBConnection(connection2.ConnectionString))
                     {
                         using (var command = database.CreateStoredProcCommand(schema, procname))
                         {
