@@ -123,11 +123,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Civic.Core.Configuration, Version=1.23.0.0, Culture=neutral, PublicKeyToken=e6957e8cb76ef982, processorArchitecture=MSIL">
-      <HintPath>..\packages\Civic.Core.Configuration.1.23.5\lib\net40\Civic.Core.Configuration.dll</HintPath>
+      <HintPath>..\packages\Civic.Core.Configuration.1.23.7\lib\net40\Civic.Core.Configuration.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Civic.Core.Logging, Version=1.23.0.0, Culture=neutral, PublicKeyToken=e6957e8cb76ef982, processorArchitecture=MSIL">
-      <HintPath>..\packages\Civic.Core.Logging.1.23.5\lib\net40\Civic.Core.Logging.dll</HintPath>
+      <HintPath>..\packages\Civic.Core.Logging.1.23.6\lib\net40\Civic.Core.Logging.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
