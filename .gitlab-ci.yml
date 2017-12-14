@@ -1,0 +1,18 @@
+stages:
+  - build
+
+build:
+  stage: build
+  variables:
+    VERSION: '$CI_PIPELINE_ID.0'
+  script:
+    - 'echo %CI_PROJECT_DIR%'
+    - 'C:\Builds\.nuget\AssemblyVersionSetter.exe -t -e %VERSION% %CI_PROJECT_DIR%\References'
+    - '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\msbuild.exe" /t:restore Civic.Core.%CI_PROJECT_NAME%.sln /p:RestoreConfigFile=C:\Builds\.nuget\NuGet.Config /p:Configuration="Nuget-45"'
+    - '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\msbuild.exe" Civic.Core.%CI_PROJECT_NAME%.sln /m /tv:15.0 /p:DoEvents=false /p:Configuration="Nuget-45" /p:Platform="Any Cpu"'
+    - '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\msbuild.exe" /t:restore Civic.Core.%CI_PROJECT_NAME%.sln /p:RestoreConfigFile=C:\Builds\.nuget\NuGet.Config /p:Configuration="Nuget-46"'
+    - '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\msbuild.exe" Civic.Core.%CI_PROJECT_NAME%.sln /m /tv:15.0 /p:DoEvents=false /p:Configuration="Nuget-46" /p:Platform="Any Cpu"'
+    - 'call C:\Builds\.nuget\pack2.bat %CI_PROJECT_DIR% %CI_PROJECT_DIR%'
+  tags:
+    - msbuild
+  
