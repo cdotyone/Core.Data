@@ -109,6 +109,7 @@ UpgradeLog*.XML
 node_modules
 dist
 .tmp
+.vs
 .sass-cache
 app/bower_components
 .idea
