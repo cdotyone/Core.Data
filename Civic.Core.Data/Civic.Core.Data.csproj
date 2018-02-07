@@ -137,7 +137,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Civic.Core.Logging">
-      <Version>1.24.515</Version>
+      <Version>1.26.773</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Net.Compilers">
       <Version>2.6.1</Version>
