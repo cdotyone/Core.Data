@@ -18,6 +18,8 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Threading;
 using Civic.Core.Logging;
+using Civic.Core.Logging.Configuration;
+using Civic.Core.Security;
 
 #endregion References
 
@@ -33,10 +35,10 @@ namespace Civic.Core.Data
     {
         #region Fields
 
-        private IDBConnection _dbconn;          // the database connections
-        private readonly List<DbParameter> _params;      // the parameters to be used when excuting the command
-        private readonly string _procname;               // the store procedure name to execute
-        private string _schema;                          // the schema name of the procedure/command being executed
+        private IDBConnection _dbconn;                              // the database connections
+        private readonly Dictionary<string, DbParameter> _params;   // the parameters to be used when excuting the command
+        private readonly string _procname;                          // the store procedure name to execute
+        private string _schema;                                     // the schema name of the procedure/command being executed
         private readonly CommandType _commandType;
 
         #endregion Fields
@@ -51,18 +53,19 @@ namespace Civic.Core.Data
         /// <param name="procname">the name of the stored procedure that will be executed</param>
         internal DBCommand(IDBConnection dbconn, string schemaName, string procname)
         {
+            Initialize();
             _dbconn = dbconn;
             _procname = procname;
             _schema = schemaName;
-            _params = new List<DbParameter>();
             _commandType = CommandType.StoredProcedure;
         }
 
         internal DBCommand(SqlDBConnection dbconn, string commandText, CommandType commandType)
         {
+            Initialize();
             _dbconn = dbconn;
             _procname = commandText;
-            _params = new List<DbParameter>();
+            _params = new Dictionary<string,DbParameter>();
             _commandType = commandType;
         }
 
@@ -87,6 +90,18 @@ namespace Civic.Core.Data
         #endregion Properties
 
         #region Methods
+
+        private void Initialize()
+        {
+            AddInParameter("@environmentCode", LoggingConfig.Current.EnvironmentCode);
+            AddInParameter("@clientCode", LoggingConfig.Current.ClientCode);
+            AddInParameter("@moduleCode", LoggingConfig.Current.ApplicationName);
+
+            var user = IdentityManager.Username;
+            AddInParameter("@who", user);
+            AddInParameter("@modifiedBy", user);
+            AddInParameter("@createdBy", user);
+        }
 
         /// <summary>
         /// Adds a new In DbParameterobject to the given command.
@@ -124,7 +139,7 @@ namespace Civic.Core.Data
         /// </summary>
         public void AddReturnParameter()
         {
-            _params.Add(_dbconn.CreateReturnParameter());
+            _params.Add("@RETURN_VALUE",_dbconn.CreateReturnParameter());
         }
 
         /// <summary>
@@ -150,7 +165,9 @@ namespace Civic.Core.Data
             if (val != null)
                 value = null;
 
-            _params.Add(_dbconn.CreateParameter(name, direction, value));
+            var key = name.ToUpperInvariant();
+            if (_params.ContainsKey(key)) _params.Remove(key);
+            _params.Add(name.ToUpperInvariant(), _dbconn.CreateParameter(name, direction, value));
         }
 
         /// <summary>
@@ -159,7 +176,7 @@ namespace Civic.Core.Data
         /// <param name="parameter">the parameter to add</param>
         public void AddParameter(DbParameter parameter)
         {
-            _params.Add(parameter);
+            _params.Add(parameter.ParameterName.ToUpperInvariant(), parameter);
         }
 
         /// <summary>
@@ -216,7 +233,7 @@ namespace Civic.Core.Data
 
                         //assign the provided values to these parameters based on parameter order
                         _dbconn.LastSql = sqlDBConnection.PrepareCommand(cmd, CommandType.StoredProcedure, _schema, _procname,
-                                                 commandParameters.ToArray(), _params.ToArray());
+                                                 commandParameters.ToArray(), _params.Values.ToArray());
                         commandParameters.Clear();
                         Logger.LogTrace(LoggingBoundaries.Database, "ExecuteNonQuery Called:\n{0}", _dbconn.LastSql);
 
@@ -293,7 +310,7 @@ namespace Civic.Core.Data
 
                             //assign the provided values to these parameters based on parameter order
                             _dbconn.LastSql = dbConn.PrepareCommand(command, CommandType.StoredProcedure, _schema,
-                                                                    _procname, commandParameters, _params.ToArray());
+                                                                    _procname, commandParameters, _params.Values.ToArray());
                                 Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
 
                             if (connection.State != ConnectionState.Open)
@@ -335,7 +352,7 @@ namespace Civic.Core.Data
 
                         //assign the provided values to these parameters based on parameter order
                         _dbconn.LastSql = sqlDBConnection.PrepareCommand(command, CommandType.StoredProcedure, _schema,
-                                                                         _procname, commandParameters, _params.ToArray());
+                                                                         _procname, commandParameters, _params.Values.ToArray());
                         Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
 
                         using (SqlDataReader dr = sequential ? command.ExecuteReader(CommandBehavior.SequentialAccess) :  command.ExecuteReader())
@@ -385,7 +402,7 @@ namespace Civic.Core.Data
                         SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname);
 
                         //assign the provided values to these parameters based on parameter order
-                        _dbconn.LastSql = sqlDBConnection.PrepareCommand(cmd, CommandType.StoredProcedure, _schema, _procname, commandParameters, _params.ToArray());
+                        _dbconn.LastSql = sqlDBConnection.PrepareCommand(cmd, CommandType.StoredProcedure, _schema, _procname, commandParameters, _params.Values.ToArray());
 
                         //execute the command & return the results
                         object retval = cmd.ExecuteScalar();
@@ -455,7 +472,7 @@ namespace Civic.Core.Data
 
                     _dbconn.LastSql = cmd.CommandText;
 
-                    foreach (DbParameter param in _params)
+                    foreach (DbParameter param in _params.Values)
                     {
                         if (param.Direction == ParameterDirection.Output ||
                             param.Direction == ParameterDirection.InputOutput)
@@ -488,7 +505,7 @@ namespace Civic.Core.Data
 
                     int retval = cmd.ExecuteNonQuery();
 
-                    foreach (DbParameter param in _params)
+                    foreach (DbParameter param in _params.Values)
                     {
                         if (param.Direction != ParameterDirection.Output &&
                             param.Direction != ParameterDirection.InputOutput) continue;
@@ -540,7 +557,7 @@ namespace Civic.Core.Data
                 {
                     using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", _procname))
                     {
-                        foreach (DbParameter param in _params)
+                        foreach (DbParameter param in _params.Values)
                         {
                             command.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
                         }
@@ -578,7 +595,7 @@ namespace Civic.Core.Data
         public DbParameter GetOutParameter(string name)
         {
             DbParameter tparam = _dbconn.CreateParameter(name, null);
-            return _params.FirstOrDefault(param => string.Compare(param.ParameterName, tparam.ParameterName, StringComparison.InvariantCultureIgnoreCase) == 0);
+            return _params.Values.FirstOrDefault(param => string.Compare(param.ParameterName, tparam.ParameterName, StringComparison.InvariantCultureIgnoreCase) == 0);
         }
 
         /// <summary>
@@ -587,7 +604,7 @@ namespace Civic.Core.Data
         /// <returns></returns>
         public object GetReturnParameter()
         {
-            return (from param in _params where param.Direction == ParameterDirection.ReturnValue select param.Value).FirstOrDefault();
+            return (from param in _params.Values where param.Direction == ParameterDirection.ReturnValue select param.Value).FirstOrDefault();
         }
 
         #endregion Methods
