@@ -53,20 +53,20 @@ namespace Civic.Core.Data
         /// <param name="procname">the name of the stored procedure that will be executed</param>
         internal DBCommand(IDBConnection dbconn, string schemaName, string procname)
         {
+            _params = new Dictionary<string, DbParameter>();
             Initialize();
             _dbconn = dbconn;
             _procname = procname;
             _schema = schemaName;
-            _params = new Dictionary<string, DbParameter>();
             _commandType = CommandType.StoredProcedure;
         }
 
         internal DBCommand(SqlDBConnection dbconn, string commandText, CommandType commandType)
         {
+            _params = new Dictionary<string, DbParameter>();
             Initialize();
             _dbconn = dbconn;
             _procname = commandText;
-            _params = new Dictionary<string,DbParameter>();
             _commandType = commandType;
         }
 
