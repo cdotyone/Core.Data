@@ -37,6 +37,7 @@ namespace Civic.Core.Data
 
         private IDBConnection _dbconn;                              // the database connections
         Dictionary<string, DbParameter> _params;                    // the parameters to be used when excuting the command
+        Dictionary<string, object> _defaults;                       // parameters added by default
         private readonly string _procname;                          // the store procedure name to execute
         private string _schema;                                     // the schema name of the procedure/command being executed
         private readonly CommandType _commandType;
@@ -58,6 +59,7 @@ namespace Civic.Core.Data
             _procname = procname;
             _schema = schemaName;
             _commandType = CommandType.StoredProcedure;
+            _params = new Dictionary<string, DbParameter>();
         }
 
         internal DBCommand(SqlDBConnection dbconn, string commandText, CommandType commandType)
@@ -66,6 +68,7 @@ namespace Civic.Core.Data
             _dbconn = dbconn;
             _procname = commandText;
             _commandType = commandType;
+            _params = new Dictionary<string, DbParameter>();
         }
 
         #endregion Constructors
@@ -92,15 +95,15 @@ namespace Civic.Core.Data
 
         private void Initialize()
         {
-            _params = new Dictionary<string, DbParameter>();
-            AddInParameter("@environmentCode", LoggingConfig.Current.EnvironmentCode);
-            AddInParameter("@clientCode", LoggingConfig.Current.ClientCode);
-            AddInParameter("@moduleCode", LoggingConfig.Current.ApplicationName);
+            _defaults = new Dictionary<string, object>();
+            AddDefaultParameter("@environmentCode", LoggingConfig.Current.EnvironmentCode);
+            AddDefaultParameter("@clientCode", LoggingConfig.Current.ClientCode);
+            AddDefaultParameter("@moduleCode", LoggingConfig.Current.ApplicationName);
 
             var user = IdentityManager.Username;
-            AddInParameter("@who", user);
-            AddInParameter("@modifiedBy", user);
-            AddInParameter("@createdBy", user);
+            AddDefaultParameter("@who", user);
+            AddDefaultParameter("@modifiedBy", user);
+            AddDefaultParameter("@createdBy", user);
         }
 
         /// <summary>
@@ -123,6 +126,18 @@ namespace Civic.Core.Data
         public void AddInParameter(string name, object value)
         {
             AddParameter(name, ParameterDirection.Input, value);
+        }
+
+        /// <summary>
+        /// Adds a new In DbParameter object to the given command.
+        /// </summary>
+        /// <param name="name"><para>The name of the parameter.</para></param>
+        /// <param name="value"><para>The value of the parameter.</para></param>      
+        public void AddDefaultParameter(string name, object value)
+        {
+            name = name.ToLowerInvariant();
+            if (_defaults.ContainsKey(name)) _defaults.Remove(name.ToLowerInvariant());
+            _defaults.Add(name,value);
         }
 
         /// <summary>
@@ -165,9 +180,9 @@ namespace Civic.Core.Data
             if (val != null)
                 value = null;
 
-            var key = name.ToUpperInvariant();
+            var key = name.ToLowerInvariant();
             if (_params.ContainsKey(key)) _params.Remove(key);
-            _params.Add(name.ToUpperInvariant(), _dbconn.CreateParameter(name, direction, value));
+            _params.Add(name.ToLowerInvariant(), _dbconn.CreateParameter(name, direction, value));
         }
 
         /// <summary>
@@ -176,7 +191,7 @@ namespace Civic.Core.Data
         /// <param name="parameter">the parameter to add</param>
         public void AddParameter(DbParameter parameter)
         {
-            _params.Add(parameter.ParameterName.ToUpperInvariant(), parameter);
+            _params.Add(parameter.ParameterName.ToLowerInvariant(), parameter);
         }
 
         /// <summary>
@@ -230,6 +245,12 @@ namespace Civic.Core.Data
                             {
                                 new SqlParameter("@RETURN_VALUE", 0) {Direction = ParameterDirection.ReturnValue}
                             };
+
+                        foreach (var def in _defaults)
+                        {
+                            if(!_params.ContainsKey(def.Key)) 
+                                AddInParameter(def.Key,def.Value);
+                        }
 
                         //assign the provided values to these parameters based on parameter order
                         _dbconn.LastSql = sqlDBConnection.PrepareCommand(cmd, CommandType.StoredProcedure, _schema, _procname,
@@ -308,6 +329,12 @@ namespace Civic.Core.Data
                             //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
                             SqlParameter[] commandParameters = dbConn.GetSpParameters(_schema, _procname);
 
+                            foreach (var def in _defaults)
+                            {
+                                if (!_params.ContainsKey(def.Key))
+                                    AddInParameter(def.Key, def.Value);
+                            }
+
                             //assign the provided values to these parameters based on parameter order
                             _dbconn.LastSql = dbConn.PrepareCommand(command, CommandType.StoredProcedure, _schema,
                                                                     _procname, commandParameters, _params.Values.ToArray());
@@ -349,6 +376,12 @@ namespace Civic.Core.Data
 
                         //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
                         SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname);
+
+                        foreach (var def in _defaults)
+                        {
+                            if (!_params.ContainsKey(def.Key))
+                                AddInParameter(def.Key, def.Value);
+                        }
 
                         //assign the provided values to these parameters based on parameter order
                         _dbconn.LastSql = sqlDBConnection.PrepareCommand(command, CommandType.StoredProcedure, _schema,
@@ -400,6 +433,12 @@ namespace Civic.Core.Data
 
                         //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
                         SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname);
+
+                        foreach (var def in _defaults)
+                        {
+                            if (!_params.ContainsKey(def.Key))
+                                AddInParameter(def.Key, def.Value);
+                        }
 
                         //assign the provided values to these parameters based on parameter order
                         _dbconn.LastSql = sqlDBConnection.PrepareCommand(cmd, CommandType.StoredProcedure, _schema, _procname, commandParameters, _params.Values.ToArray());
