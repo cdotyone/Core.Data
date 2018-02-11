@@ -57,6 +57,7 @@ namespace Civic.Core.Data
             _dbconn = dbconn;
             _procname = procname;
             _schema = schemaName;
+            _params = new Dictionary<string, DbParameter>();
             _commandType = CommandType.StoredProcedure;
         }
 
