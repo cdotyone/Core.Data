@@ -36,7 +36,7 @@ namespace Civic.Core.Data
         #region Fields
 
         private IDBConnection _dbconn;                              // the database connections
-        readonly Dictionary<string, DbParameter> _params;           // the parameters to be used when excuting the command
+        Dictionary<string, DbParameter> _params;                    // the parameters to be used when excuting the command
         private readonly string _procname;                          // the store procedure name to execute
         private string _schema;                                     // the schema name of the procedure/command being executed
         private readonly CommandType _commandType;
