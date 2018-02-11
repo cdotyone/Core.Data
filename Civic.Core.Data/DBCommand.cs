@@ -36,7 +36,7 @@ namespace Civic.Core.Data
         #region Fields
 
         private IDBConnection _dbconn;                              // the database connections
-        private readonly Dictionary<string, DbParameter> _params;   // the parameters to be used when excuting the command
+        readonly Dictionary<string, DbParameter> _params;           // the parameters to be used when excuting the command
         private readonly string _procname;                          // the store procedure name to execute
         private string _schema;                                     // the schema name of the procedure/command being executed
         private readonly CommandType _commandType;
@@ -53,7 +53,6 @@ namespace Civic.Core.Data
         /// <param name="procname">the name of the stored procedure that will be executed</param>
         internal DBCommand(IDBConnection dbconn, string schemaName, string procname)
         {
-            _params = new Dictionary<string, DbParameter>();
             Initialize();
             _dbconn = dbconn;
             _procname = procname;
@@ -63,7 +62,6 @@ namespace Civic.Core.Data
 
         internal DBCommand(SqlDBConnection dbconn, string commandText, CommandType commandType)
         {
-            _params = new Dictionary<string, DbParameter>();
             Initialize();
             _dbconn = dbconn;
             _procname = commandText;
@@ -94,6 +92,7 @@ namespace Civic.Core.Data
 
         private void Initialize()
         {
+            _params = new Dictionary<string, DbParameter>();
             AddInParameter("@environmentCode", LoggingConfig.Current.EnvironmentCode);
             AddInParameter("@clientCode", LoggingConfig.Current.ClientCode);
             AddInParameter("@moduleCode", LoggingConfig.Current.ApplicationName);
