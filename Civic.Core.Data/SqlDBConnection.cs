@@ -42,6 +42,14 @@ namespace Civic.Core.Data
         private SqlTransaction _transaction;    // open sql transaction
 
         private SqlConnection _connection;      // sql connection if there is one
+        public SqlConnection CurrentConnection
+        {
+            get
+            {
+                return _connection;
+            }
+        }
+
 
         #endregion Fields
 
