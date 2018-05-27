@@ -135,18 +135,31 @@
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Nuget-47|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Nuget-47\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <BaseAddress>285212672</BaseAddress>
+    <Optimize>true</Optimize>
+    <FileAlignment>4096</FileAlignment>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Civic.Core.Configuration">
-      <Version>1.25.1543</Version>
+      <Version>1.25.1956</Version>
     </PackageReference>
     <PackageReference Include="Civic.Core.Logging">
-      <Version>1.26.1235</Version>
+      <Version>1.26.1957</Version>
     </PackageReference>
     <PackageReference Include="Civic.Core.Security">
-      <Version>1.25.1240</Version>
+      <Version>1.25.1958</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Net.Compilers">
-      <Version>2.7.0</Version>
+      <Version>2.8.2</Version>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>
