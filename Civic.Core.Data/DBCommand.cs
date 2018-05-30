@@ -537,7 +537,15 @@ namespace Civic.Core.Data
 
                             cmd.Parameters.Add(param2);
                         }
-                        else cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
+                        else
+                        {
+                            var value = param.Value;
+                            //If the parameter is a null value, sql command doesn't recognize as valid parameter, must use dbnull.
+                            if (value == null)
+                                value = DBNull.Value;
+
+                            cmd.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), value);
+                        }
                     }
 
                     Logger.LogTrace(LoggingBoundaries.Database, "ExecuteCommandNonQuery Called:\n{0}", _dbconn.LastSql);
