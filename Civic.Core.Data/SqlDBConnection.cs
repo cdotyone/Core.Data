@@ -20,6 +20,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using Civic.Core.Logging;
+using Civic.Core.Security;
 
 #endregion References
 
@@ -52,9 +53,19 @@ namespace Civic.Core.Data
         /// </summary>
         public SqlDBConnection()
         {
+            AddClaimsDefaults();
+        }
+
+        private void AddClaimsDefaults()
+        {
             AddDefaultParameter(CreateParameter("@computerName", Environment.MachineName), false);
             AddDefaultParameter(CreateParameter("@wasError", false), false);
-            AddDefaultParameter(CreateParameter("@modifiedBy", 0), false);
+
+            var defaults = DataConfig.Current.GetClaimsDefaults();
+            foreach (var claim in defaults)
+            {
+                AddDefaultParameter(CreateParameter(claim.Key, IdentityManager.GetClaimValue(claim.Value)), false);
+            }
         }
 
         /// <summary>
@@ -63,6 +74,7 @@ namespace Civic.Core.Data
         public SqlDBConnection(string connectionString)
             : this()
         {
+            AddClaimsDefaults();
             _connectionString = connectionString;
         }
 

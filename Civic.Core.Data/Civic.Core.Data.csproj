@@ -153,10 +153,10 @@
       <Version>1.25.1956</Version>
     </PackageReference>
     <PackageReference Include="Civic.Core.Logging">
-      <Version>1.26.1957</Version>
+      <Version>1.26.1984</Version>
     </PackageReference>
     <PackageReference Include="Civic.Core.Security">
-      <Version>1.25.1958</Version>
+      <Version>1.25.2467</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Net.Compilers">
       <Version>2.8.2</Version>

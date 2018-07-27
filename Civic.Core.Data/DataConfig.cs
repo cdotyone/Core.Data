@@ -1,4 +1,6 @@
-﻿using Civic.Core.Configuration;
+﻿using System.Collections.Generic;
+using Civic.Core.Configuration;
+using Civic.Core.Security;
 
 namespace Civic.Core.Data
 {
@@ -8,6 +10,7 @@ namespace Civic.Core.Data
         private static CivicSection _coreConfig;
         private static DataConfig _current;
         private string _default;
+        private Dictionary<string, string> _claimsDefaults;
 
         public DataConfig(INamedElement element)
         {
@@ -65,6 +68,35 @@ namespace Civic.Core.Data
                 schemaName = attributes.ContainsKey(name) ? attributes[name] : null;
             }
             return string.IsNullOrEmpty(schemaName) ? name : schemaName;
+        }
+
+        public Dictionary<string,string> GetClaimsDefaults()
+        {
+            if (_claimsDefaults != null) return _claimsDefaults;
+
+            if (Children.ContainsKey("claims"))
+            {
+                var claims = Children["claims"];
+
+                var defaults = new Dictionary<string, string>();
+
+                foreach (var pairs in claims.Children)
+                {
+                    defaults[pairs.Value.Attributes["name"]] = pairs.Value.Attributes["claim"];
+                }
+
+                _claimsDefaults = defaults;
+            }
+            else
+            {
+                var defaults = new Dictionary<string, string>();
+
+                defaults["@ouid"] = StandardClaimTypes.ORGANIZATION_ID;
+                defaults["@who"] = StandardClaimTypes.PERSON_ID;
+
+                _claimsDefaults = defaults;
+            }
+            return _claimsDefaults;
         }
     }
 }
