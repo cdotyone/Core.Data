@@ -62,10 +62,8 @@ namespace Civic.Core.Data
             if (Children.ContainsKey("schema"))
             {
                 var attributes = Children["schema"].Attributes;
-                schemaName = attributes.ContainsKey(name) ? attributes[name] : _default;
+                schemaName = attributes.ContainsKey(name) ? attributes[name] : null;
             }
-            else if (!string.IsNullOrEmpty(_default)) return _default;
-
             return string.IsNullOrEmpty(schemaName) ? name : schemaName;
         }
     }
