@@ -441,8 +441,16 @@ namespace Civic.Core.Data
                                 commandParameter.Value = new Guid(setToParameter.Value.ToString());
                             break;
                         case "Boolean":
+                            if (setToParameter.DbType == DbType.String)
+                            {
+                                if (setToParameter.Value != null)
+                                {
+                                    commandParameter.Value = setToParameter.Value.ToString().ToLower() == "true" ? "Y":"N";
+                                }
+                            }
+
                             if (setToParameter.Value != null)
-                                if (setToParameter.Value.ToString() == "0" || setToParameter.ToString().ToLower() == "false")
+                                if (setToParameter.Value.ToString() == "0" || setToParameter.Value.ToString().ToLower() == "false")
                                     commandParameter.Value = false;
                                 else
                                     commandParameter.Value = true;
