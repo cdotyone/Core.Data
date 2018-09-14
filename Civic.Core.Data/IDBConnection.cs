@@ -15,6 +15,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
+using System.Security.Claims;
 
 #endregion References
 
@@ -79,6 +80,14 @@ namespace Civic.Core.Data
         /// <param name="param">the database parameter</param>
         /// <param name="canBeCached">can the parameter be used when caching the result set</param>
         void AddDefaultParameter( DbParameter param, bool canBeCached );
+
+
+        /// <summary>
+        /// Adds default parameters based on claims
+        /// </summary>
+        /// <param name="claimsPrincipal">The claims principle</param>
+        /// <returns>Self</returns>
+        IDBConnection AddClaimsDefaults(ClaimsPrincipal claimsPrincipal);
 
         /// <summary>
         /// Adds a default parameter when executing store procedures
