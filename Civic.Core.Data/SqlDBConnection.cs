@@ -17,6 +17,7 @@ using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Security.Claims;
 using System.Text;
 using System.Threading;
 using Civic.Core.Logging;
@@ -53,18 +54,21 @@ namespace Civic.Core.Data
         /// </summary>
         public SqlDBConnection()
         {
-            AddClaimsDefaults();
+            AddDefaults();
         }
 
-        private void AddClaimsDefaults()
+        private void AddDefaults()
         {
             AddDefaultParameter(CreateParameter("@computerName", Environment.MachineName), false);
             AddDefaultParameter(CreateParameter("@wasError", false), false);
+        }
 
+        public void AddClaimsDefaults(ClaimsPrincipal claimsPrincipal)
+        {
             var defaults = DataConfig.Current.GetClaimsDefaults();
             foreach (var claim in defaults)
             {
-                AddDefaultParameter(CreateParameter(claim.Key, IdentityManager.GetClaimValue(claim.Value)), false);
+                AddDefaultParameter(CreateParameter(claim.Key, IdentityManager.GetClaimValue(claimsPrincipal, claim.Value)), false);
             }
         }
 
@@ -74,7 +78,7 @@ namespace Civic.Core.Data
         public SqlDBConnection(string connectionString)
             : this()
         {
-            AddClaimsDefaults();
+            AddDefaults();
             _connectionString = connectionString;
         }
 

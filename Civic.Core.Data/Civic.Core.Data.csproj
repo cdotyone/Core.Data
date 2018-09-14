@@ -150,16 +150,18 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Civic.Core.Configuration">
-      <Version>1.25.1956</Version>
+      <Version>1.25.2533</Version>
     </PackageReference>
     <PackageReference Include="Civic.Core.Logging">
-      <Version>1.26.1984</Version>
+      <Version>1.26.2475</Version>
     </PackageReference>
     <PackageReference Include="Civic.Core.Security">
-      <Version>1.25.2467</Version>
+      <Version>1.25.3079</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Net.Compilers">
-      <Version>2.8.2</Version>
+      <Version>2.9.0</Version>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>
@@ -177,7 +179,6 @@
     <Reference Include="System.Data.Entity" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Security" />
-    <Reference Include="System.Web" />
     <Reference Include="System.Xml">
       <Name>System.XML</Name>
     </Reference>
