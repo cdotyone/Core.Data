@@ -92,7 +92,7 @@ namespace Civic.Core.Data
                 var defaults = new Dictionary<string, string>();
 
                 defaults["@ouid"] = StandardClaimTypes.ORGANIZATION_ID;
-                defaults["@who"] = StandardClaimTypes.PERSON_ID;
+                defaults["@personuid"] = StandardClaimTypes.PERSON_ID;
 
                 _claimsDefaults = defaults;
             }
