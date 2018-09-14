@@ -63,7 +63,7 @@ namespace Civic.Core.Data
             AddDefaultParameter(CreateParameter("@wasError", false), false);
         }
 
-        public SqlDBConnection AddClaimsDefaults(ClaimsPrincipal claimsPrincipal)
+        public IDBConnection AddClaimsDefaults(ClaimsPrincipal claimsPrincipal)
         {
             var defaults = DataConfig.Current.GetClaimsDefaults();
             foreach (var claim in defaults)
