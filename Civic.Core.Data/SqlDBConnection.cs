@@ -604,7 +604,8 @@ namespace Civic.Core.Data
         {
             if (string.IsNullOrEmpty(spName)) throw new ArgumentNullException("spName");
 
-            string key = _dbcode + ":" + spName;
+            string key = _dbcode + ":" + schemaName + ":" + spName;
+            key = key.ToLowerInvariant();
 
             var cachedParameters = (SqlParameterCollection)_paramcache[key];
             if (cachedParameters == null)
