@@ -21,6 +21,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading;
 using Civic.Core.Logging;
+using Civic.Core.Logging.Configuration;
 using Civic.Core.Security;
 
 #endregion References
@@ -60,6 +61,9 @@ namespace Civic.Core.Data
         private void AddDefaults()
         {
             AddDefaultParameter(CreateParameter("@computerName", Environment.MachineName), false);
+            AddDefaultParameter("@environmentCode", LoggingConfig.Current.EnvironmentCode);
+            AddDefaultParameter("@clientCode", LoggingConfig.Current.ClientCode);
+            AddDefaultParameter("@moduleCode", LoggingConfig.Current.ApplicationName);
             AddDefaultParameter(CreateParameter("@wasError", false), false);
         }
 
