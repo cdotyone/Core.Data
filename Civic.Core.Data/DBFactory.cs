@@ -35,7 +35,9 @@ namespace Civic.Core.Data
 
                 if (ConfigurationManager.ConnectionStrings[name] == null)
                     throw new ConfigurationErrorsException(string.Format("could not locate connectionString: {0}", name));
-                return new SqlDBConnection(ConfigurationManager.ConnectionStrings[name].ConnectionString);
+                var connection = new SqlDBConnection(ConfigurationManager.ConnectionStrings[name].ConnectionString);
+                connection.DBCode = name;
+                return connection;
             }
             catch (ConfigurationErrorsException configurationException)
             {
