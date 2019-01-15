@@ -154,13 +154,13 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Civic.Core.Configuration">
-      <Version>1.26.7</Version>
+      <Version>1.26.9</Version>
     </PackageReference>
     <PackageReference Include="Civic.Core.Logging">
-      <Version>1.27.8</Version>
+      <Version>1.27.12</Version>
     </PackageReference>
     <PackageReference Include="Civic.Core.Security">
-      <Version>1.26.11</Version>
+      <Version>1.26.13</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Net.Compilers">
       <Version>2.10.0</Version>
