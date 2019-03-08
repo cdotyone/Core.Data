@@ -8,7 +8,7 @@ build:
     MODULE_CODE: 'CORE'
   script:
     - 'echo %CI_PROJECT_DIR%'
-    - 'call C:\Builds\.nuget\set.bat %CI_PROJECT_DIR% %CI_PROJECT_NAMESPACE% %CI_PROJECT_NAME% %CI_PIPELINE_ID% %CI_COMMIT_SHA%'
+    - 'call C:\Builds\.nuget\set.bat %CI_PROJECT_DIR% %CI_PROJECT_NAMESPACE% %CI_PROJECT_NAME% %CI_PIPELINE_ID% %CI_COMMIT_SHA% %MODULE_CODE%'
     - '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\msbuild.exe" /t:restore %CI_PROJECT_NAMESPACE%.%CI_PROJECT_NAME%.sln /p:RestoreConfigFile=C:\Builds\.nuget\NuGet.Config /p:Configuration="Nuget-45"'
     - '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\msbuild.exe" %CI_PROJECT_NAMESPACE%.%CI_PROJECT_NAME%.sln /m /tv:15.0 /p:DoEvents=false /p:Configuration="Nuget-45" /p:Platform="Any Cpu"'
     - '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\msbuild.exe" /t:restore %CI_PROJECT_NAMESPACE%.%CI_PROJECT_NAME%.sln /p:RestoreConfigFile=C:\Builds\.nuget\NuGet.Config /p:Configuration="Nuget-46"'
