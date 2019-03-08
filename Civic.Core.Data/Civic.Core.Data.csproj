@@ -154,10 +154,13 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Civic.Core.Configuration">
-      <Version>1.26.9</Version>
+      <Version>1.26.10</Version>
     </PackageReference>
     <PackageReference Include="Civic.Core.Logging">
-      <Version>1.27.12</Version>
+      <Version>1.27.15</Version>
+    </PackageReference>
+    <PackageReference Include="Civic.Core.Security">
+      <Version>1.26.14</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Net.Compilers">
       <Version>2.10.0</Version>
@@ -240,12 +243,6 @@
       <Link>civic.snk</Link>
     </None>
     <None Include="app.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\Security\Civic.Core.Security\Civic.Core.Security.csproj">
-      <Project>{5f6f5303-3d84-4d29-8fba-3b1d54ee879d}</Project>
-      <Name>Civic.Core.Security</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
