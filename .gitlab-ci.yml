@@ -5,6 +5,7 @@ build:
   stage: build
   variables:
     VERSION: '$CI_PIPELINE_ID.0'
+    MODULE_CODE: 'CORE'
   script:
     - 'echo %CI_PROJECT_DIR%'
     - 'call C:\Builds\.nuget\set.bat %CI_PROJECT_DIR% %CI_PROJECT_NAMESPACE% %CI_PROJECT_NAME% %CI_PIPELINE_ID% %CI_COMMIT_SHA%'
