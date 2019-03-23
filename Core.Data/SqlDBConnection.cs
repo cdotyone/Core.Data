@@ -20,6 +20,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading;
+using Core.Configuration;
 using Core.Logging;
 using Core.Logging.Configuration;
 using Core.Security;
@@ -69,7 +70,7 @@ namespace Core.Data
 
         public IDBConnection AddClaimsDefaults(ClaimsPrincipal claimsPrincipal)
         {
-            var defaults = DataConfig.Current.GetClaimsDefaults();
+            var defaults = StandardClaimTypes.GetClaimsDefaultForDataConfig(DataConfig.Current);
             foreach (var claim in defaults)
             {
                 AddDefaultParameter(CreateParameter(claim.Key, IdentityManager.GetClaimValue(claimsPrincipal, claim.Value)), false);
