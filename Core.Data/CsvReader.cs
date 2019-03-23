@@ -4,7 +4,7 @@ using System.Data;
 using System.IO;
 using System.Text;
 
-namespace Civic.Core.Data
+namespace Core.Data
 {
 	public class CsvReader : IDataReader
 	{

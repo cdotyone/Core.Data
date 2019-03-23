@@ -1,9 +1,9 @@
 using System;
 using System.Configuration;
-using Civic.Core.Configuration;
-using Civic.Core.Logging;
+using Core.Configuration;
+using Core.Logging;
 
-namespace Civic.Core.Data
+namespace Core.Data
 {
 	public static class DatabaseFactory
 	{

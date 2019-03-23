@@ -7,7 +7,7 @@ using System.Text;
 
 #endregion References
 
-namespace Civic.Core.Data
+namespace Core.Data
 {
     /// <summary>
     /// Internal class used to encrypt and decrypt connection strings

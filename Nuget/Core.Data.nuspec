@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>Core.Data</id>
+    <version>$version$</version>
+    <title />
+    <authors>Chris Doty</authors>
+    <owners />
+    <iconUrl>http://nuget.civic.com/content/core.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Database Abstraction Layer - Framework Dll</description>
+    <summary>Core.Data</summary>
+    <dependencies>
+      <group>
+        <dependency id="Core.Configuration" version="[2.0.0,3.0.0)" xmlns="" />
+        <dependency id="Core.Logging" version="[2.0.0,3.0.0)" xmlns="" />
+        <dependency id="Core.Security" version="[2.0.0,3.0.0)" xmlns="" />
+        <dependency id="Newtonsoft.Json" version="[12.0.1,13.0.0)" xmlns="" />
+      </group>
+    </dependencies>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System.Configuration" targetFramework="net40" />
+    </frameworkAssemblies>
+  </metadata>
+  <files>
+    <file src="..\Core.Data\bin\Release\net471\Core.Data.*" target="lib\net471" />
+    <file src="..\Core.Data\bin\Release\netstandard2.0\Core.Data.*" target="lib\netstandard2.0" />
+  </files>
+</package>
