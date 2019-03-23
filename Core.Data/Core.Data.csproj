@@ -37,9 +37,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Core.Configuration" Version="2.0.6" />
+    <PackageReference Include="Core.Configuration" Version="2.0.8" />
     <PackageReference Include="Core.Logging" Version="2.0.2" />
-    <PackageReference Include="Core.Security" Version="2.0.4" />
+    <PackageReference Include="Core.Security" Version="2.0.6" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
     <PackageReference Include="System.Data.SqlClient" Version="4.6.0" />
   </ItemGroup>
