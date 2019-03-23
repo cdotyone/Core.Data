@@ -15,7 +15,7 @@ using System.Xml;
 
 #endregion References
 
-namespace Civic.Core.Data
+namespace Core.Data
 {
     /// <summary>
     /// Describes a cache provider class that will be used to cache the results of executed sql statements

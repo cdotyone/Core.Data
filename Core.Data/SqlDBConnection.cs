@@ -20,13 +20,13 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading;
-using Civic.Core.Logging;
-using Civic.Core.Logging.Configuration;
-using Civic.Core.Security;
+using Core.Logging;
+using Core.Logging.Configuration;
+using Core.Security;
 
 #endregion References
 
-namespace Civic.Core.Data
+namespace Core.Data
 {
     /// <summary>
     /// Provides an IDBConnection class for SQL Servers

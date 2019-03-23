@@ -17,15 +17,15 @@ using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading;
-using Civic.Core.Logging;
-using Civic.Core.Logging.Configuration;
-using Civic.Core.Security;
+using Core.Logging;
+using Core.Logging.Configuration;
+using Core.Security;
 
 #endregion References
 
 // ReSharper disable CoVariantArrayConversion
 
-namespace Civic.Core.Data
+namespace Core.Data
 {
 
     /// <summary>

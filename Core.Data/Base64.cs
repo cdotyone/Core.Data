@@ -15,7 +15,7 @@ using System.Text;
 
 #endregion References
 
-namespace Civic.Core.Data
+namespace Core.Data
 {
     /// <summary>
     /// Internal class used to encode and decode Base64 strings

@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
-using Civic.Core.Configuration;
-using Civic.Core.Security;
+using Core.Security;
+using Core.Configuration;
 
-namespace Civic.Core.Data
+namespace Core.Data
 {
     public class DataConfig : NamedConfigurationElement
     {
