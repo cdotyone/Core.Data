@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
-    <id>Core.Data</id>
+    <id>Stack.Core.Data</id>
     <version>$version$</version>
     <title />
     <authors>Chris Doty</authors>
@@ -9,12 +9,12 @@
     <iconUrl>http://nuget.civic.com/content/core.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Database Abstraction Layer - Framework Dll</description>
-    <summary>Core.Data</summary>
+    <summary>Stack.Core.Data</summary>
     <dependencies>
       <group>
-        <dependency id="Core.Configuration" version="[2.0.8,3.0.0)" xmlns="" />
-        <dependency id="Core.Logging" version="[2.0.2,3.0.0)" xmlns="" />
-        <dependency id="Core.Security" version="[2.0.6,3.0.0)" xmlns="" />
+        <dependency id="Stack.Core.Configuration" version="[2.0.9,3.0.0)" xmlns="" />
+        <dependency id="Stack.Core.Logging" version="[2.0.3,3.0.0)" xmlns="" />
+        <dependency id="Stack.Core.Security" version="[2.0.7,3.0.0)" xmlns="" />
         <dependency id="Newtonsoft.Json" version="[12.0.1,13.0.0)" xmlns="" />
       </group>
     </dependencies>
