@@ -7,7 +7,7 @@ using System.Text;
 
 #endregion References
 
-namespace Core.Data
+namespace Stack.Core.Data
 {
     /// <summary>
     /// Internal class used to encrypt and decrypt connection strings

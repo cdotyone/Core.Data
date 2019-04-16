@@ -1,13 +1,3 @@
-#region Copyright / Comments
-
-// <copyright file="DBCommand.cs" company="Civic Engineering & IT">Copyright © Civic Engineering & IT 2013</copyright>
-// <author>Chris Doty</author>
-// <email>dotyc@civicinc.com</email>
-// <date>6/4/2013</date>
-// <summary></summary>
-
-#endregion Copyright / Comments
-
 #region References
 
 using System;
@@ -16,16 +6,13 @@ using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
-using System.Threading;
-using Core.Logging;
-using Core.Logging.Configuration;
-using Core.Security;
+using Stack.Core.Logging;
 
 #endregion References
 
 // ReSharper disable CoVariantArrayConversion
 
-namespace Core.Data
+namespace Stack.Core.Data
 {
 
     /// <summary>

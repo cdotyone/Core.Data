@@ -10,7 +10,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Nuget", "Nuget", "{EFB32325
 		Nuget\Stack.Core.Data.nuspec = Nuget\Stack.Core.Data.nuspec
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core.Data", "Core.Data\Core.Data.csproj", "{D00F14AA-0248-4285-A80C-7FF7FA865D1D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Stack.Core.Data", "Core.Data\Stack.Core.Data.csproj", "{D00F14AA-0248-4285-A80C-7FF7FA865D1D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

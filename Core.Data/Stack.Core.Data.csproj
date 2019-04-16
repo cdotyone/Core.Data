@@ -1,0 +1,52 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net471</TargetFrameworks>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard2.0'">
+    <DefineConstants>NETCORE;NETSTANDARD;NETSTANDARD2_0</DefineConstants>
+  </PropertyGroup>
+
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net471' ">
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Configuration" />
+  </ItemGroup>
+
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'net471'">
+    <DefineConstants>NET471;NETFULL</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="CryptoHelper.cs" />
+    <Compile Remove="Impersonator.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\References\VersionInfo.cs" Link="VersionInfo.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Stack.Core.Configuration" Version="2.0.10" />
+    <PackageReference Include="Stack.Core.Security" Version="2.0.10" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Stack.Core.Logging">
+      <Version>2.0.5</Version>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

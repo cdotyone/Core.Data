@@ -1,13 +1,3 @@
-#region Copyright / Comments
-
-// <copyright file="SqlDBConnection.cs" company="Civic Engineering & IT">Copyright © Civic Engineering & IT 2013</copyright>
-// <author>Chris Doty</author>
-// <email>dotyc@civicinc.com</email>
-// <date>6/4/2013</date>
-// <summary></summary>
-
-#endregion Copyright / Comments
-
 #region References
 
 using System;
@@ -20,14 +10,14 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading;
-using Core.Configuration;
-using Core.Logging;
-using Core.Logging.Configuration;
-using Core.Security;
+using Stack.Core.Configuration;
+using Stack.Core.Logging;
+using Stack.Core.Logging.Configuration;
+using Stack.Core.Security;
 
 #endregion References
 
-namespace Core.Data
+namespace Stack.Core.Data
 {
     /// <summary>
     /// Provides an IDBConnection class for SQL Servers
