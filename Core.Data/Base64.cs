@@ -1,13 +1,3 @@
-#region Copyright / Comments
-
-// <copyright file="Base64.cs" company="Civic Engineering & IT">Copyright © Civic Engineering & IT 2013</copyright>
-// <author>Chris Doty</author>
-// <email>dotyc@civicinc.com</email>
-// <date>6/4/2013</date>
-// <summary></summary>
-
-#endregion Copyright / Comments
-
 #region References
 
 using System;
@@ -15,7 +5,7 @@ using System.Text;
 
 #endregion References
 
-namespace Core.Data
+namespace Stack.Core.Data
 {
     /// <summary>
     /// Internal class used to encode and decode Base64 strings

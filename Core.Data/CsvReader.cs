@@ -4,7 +4,7 @@ using System.Data;
 using System.IO;
 using System.Text;
 
-namespace Core.Data
+namespace Stack.Core.Data
 {
 	public class CsvReader : IDataReader
 	{

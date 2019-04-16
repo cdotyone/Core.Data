@@ -1,25 +1,14 @@
-#region Copyright / Comments
-
-// <copyright file="IDBConnection.cs" company="Civic Engineering & IT">Copyright © Civic Engineering & IT 2013</copyright>
-// <author>Chris Doty</author>
-// <email>dotyc@civicinc.com</email>
-// <date>6/4/2013</date>
-// <summary></summary>
-
-#endregion Copyright / Comments
-
 #region References
 
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Data.SqlClient;
 using System.Security.Claims;
 
 #endregion References
 
-namespace Core.Data
+namespace Stack.Core.Data
 {
     /// <summary>
     /// Defines an IDBConnection class that is used to connect to a database server

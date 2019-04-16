@@ -1,9 +1,9 @@
 using System;
 using System.Configuration;
-using Core.Configuration;
-using Core.Logging;
+using Stack.Core.Configuration;
+using Stack.Core.Logging;
 
-namespace Core.Data
+namespace Stack.Core.Data
 {
 	public static class DatabaseFactory
 	{

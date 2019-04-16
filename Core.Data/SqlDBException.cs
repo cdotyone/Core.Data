@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Data.Common;
 
-namespace Core.Data
+namespace Stack.Core.Data
 {
     
     public class SqlDBException : Exception
