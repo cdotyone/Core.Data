@@ -160,7 +160,7 @@ namespace Stack.Core.Data
         /// <param name="schema">the schema name of the store procedure</param>
         /// <param name="procName">the name of the stored procedure to request the stored procedure for</param>
         /// <returns>The command object for the requested stored procedure</returns>
-        IDBCommand CreateStoredProcCommand(string schema, string procName);
+        IDbCommand CreateStoredProcCommand(string schema, string procName);
 
         /// <summary>
         /// Creates an IDBCommand compatible object for a sql command
@@ -168,7 +168,7 @@ namespace Stack.Core.Data
         /// <param name="commandText">the command to execute</param>
         /// <param name="commandType">the type of command being excuted</param>
         /// <returns>The command object for the requested stored procedure</returns>
-        IDBCommand CreateCommand(string commandText, CommandType commandType);
+        IDbCommand CreateCommand(string commandText, CommandType commandType);
 
         /// <summary>
         /// executes a simple parameratized sql command
@@ -185,10 +185,10 @@ namespace Stack.Core.Data
         /// <param name="sqlCommand"></param>
         /// <param name="dbcode"></param>
         /// <param name="schema"></param>
-        /// <param name="procname"></param>
+        /// <param name="procedureName"></param>
         /// <param name="retries"></param>
         /// <returns></returns>
-        int ResilentExecuteNonQuery(Action<IDBCommand> sqlCommandBuild, Action<IDBCommand> sqlCommand, string schema, string procname, int retries = 3);
+        int ResilientExecuteNonQuery(Action<IDbCommand> sqlCommandBuild, Action<IDbCommand> sqlCommand, string schema, string procedureName, int retries = 3);
         
         /// <summary>
         /// 
@@ -197,9 +197,9 @@ namespace Stack.Core.Data
         /// <param name="reader"></param>
         /// <param name="dbcode"></param>
         /// <param name="schema"></param>
-        /// <param name="procname"></param>
+        /// <param name="procedureName"></param>
         /// <param name="retries"></param>
-        void ResilentExecuteReader(Action<IDBCommand> sqlCommandBuild, Action<IDataReader> reader, string schema, string procname, int retries = 3);
+        void ResilientExecuteReader(Action<IDbCommand> sqlCommandBuild, Action<IDataReader> reader, string schema, string procedureName, int retries = 3);
 
 
         /// <summary>
