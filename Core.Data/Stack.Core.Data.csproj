@@ -28,7 +28,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Base64.cs" />
+    <Compile Remove="Crypt.cs" />
     <Compile Remove="CryptoHelper.cs" />
+    <Compile Remove="CsvReader.cs" />
+    <Compile Remove="ICache.cs" />
     <Compile Remove="Impersonator.cs" />
   </ItemGroup>
 

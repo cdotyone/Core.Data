@@ -18,7 +18,7 @@ namespace Stack.Core.Data
     /// <summary>
     /// This class is used to construct DBCommands that will be executed against a sql database.
     /// </summary>
-    public class DBCommand : IDBCommand
+    public class DBCommand : IDbCommand
     {
         #region Fields
 
@@ -65,7 +65,7 @@ namespace Stack.Core.Data
         /// <summary>`
         /// The database connection
         /// </summary>
-        public IDBConnection DBConnection
+        public IDBConnection DbConnection
         {
             get { return _dbconn; }
         }
@@ -228,7 +228,7 @@ namespace Stack.Core.Data
                         sqlDBConnection.SetCommandConnection(cmd);
 
                         //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                        var commandParameters = new List<SqlParameter>(sqlDBConnection.GetSpParameters(_schema, _procname))
+                        var commandParameters = new List<SqlParameter>(sqlDBConnection.GetParameters(_schema, _procname))
                             {
                                 new SqlParameter("@RETURN_VALUE", 0) {Direction = ParameterDirection.ReturnValue}
                             };
@@ -314,7 +314,7 @@ namespace Stack.Core.Data
                         {
 
                             //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                            SqlParameter[] commandParameters = dbConn.GetSpParameters(_schema, _procname);
+                            SqlParameter[] commandParameters = dbConn.GetParameters(_schema, _procname);
 
 /*                            foreach (var def in _defaults)
                             {
@@ -362,7 +362,7 @@ namespace Stack.Core.Data
                         if (sqlDBConnection == null) return;
 
                         //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                        SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname);
+                        SqlParameter[] commandParameters = sqlDBConnection.GetParameters(_schema, _procname);
 
 /*                        foreach (var def in _defaults)
                         {
@@ -419,7 +419,7 @@ namespace Stack.Core.Data
                         sqlDBConnection.SetCommandConnection(cmd);
 
                         //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
-                        SqlParameter[] commandParameters = sqlDBConnection.GetSpParameters(_schema, _procname);
+                        SqlParameter[] commandParameters = sqlDBConnection.GetParameters(_schema, _procname);
 
 /*                        foreach (var def in _defaults)
                         {

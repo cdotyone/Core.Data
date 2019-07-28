@@ -26,14 +26,11 @@ namespace Stack.Core.Data
     {
         #region Fields
 
-        private static readonly Hashtable _paramcache = Hashtable.Synchronized(new Hashtable());
-        private int _commandTimeout = 30;       // timout for commands
-        private string _connectionString;       // connection string
+        private static readonly Hashtable _parameterCache = Hashtable.Synchronized(new Hashtable());
         private string _dbcode = "NONE";        // database code assigned to connection string
 
         private readonly Dictionary<string, DbParameter> _paramDefault = new Dictionary<string, DbParameter>();
         private readonly List<string> _persistDefault = new List<string>();
-        private SqlTransaction _transaction;    // open sql transaction
 
         private SqlConnection _connection;      // sql connection if there is one
 
@@ -76,7 +73,7 @@ namespace Stack.Core.Data
             : this()
         {
             AddDefaults();
-            _connectionString = connectionString;
+            ConnectionString = connectionString;
         }
 
         #endregion Constructors
@@ -86,25 +83,14 @@ namespace Stack.Core.Data
         /// <summary>
         /// get/set the how long it takes a query to timeout once executed
         /// </summary>
-        public int CommandTimeout
-        {
-            get { return _commandTimeout; }
-            set { _commandTimeout = value; }
-        }
+        public int CommandTimeout { get; set; } = 30;
 
         /// <summary>
         /// set the connection string to be used when executing sql commands
         /// </summary>
-        public string ConnectionString
-        {
-            set { _connectionString = value; }
-            get { return _connectionString; }
-        }
+        public string ConnectionString { set; get; }
 
-        public SqlTransaction Transaction
-        {
-            get { return _transaction;  }
-        }
+        public SqlTransaction Transaction { get; private set; }
 
         /// <summary>
         /// get/sets if the last sql string executed
@@ -116,12 +102,12 @@ namespace Stack.Core.Data
         /// </summary>
         public string DBCode
         {
-            get { return _dbcode; }
-            set { _dbcode = value; }
+            get => _dbcode;
+            set => _dbcode = value;
         }
 
         /// <summary>
-        /// gets a list of parameters that will be used to be used as default values for defined parameters that do not ahave a value
+        /// gets a list of parameters that will be used to be used as default values for defined parameters that do not a have a value
         /// </summary>
         public DbParameter[] DefaultParams
         {
@@ -157,26 +143,23 @@ namespace Stack.Core.Data
 
         public void BeginTrans()
         {
-            if (_transaction != null) return;
-            var connection = new SqlConnection(_connectionString);
+            if (Transaction != null) return;
+            var connection = new SqlConnection(ConnectionString);
             connection.Open();
-            _transaction = connection.BeginTransaction();
+            Transaction = connection.BeginTransaction();
             _connection = connection;
         }
 
         public void BeginTrans(bool allowDirty)
         {
-            if (_transaction != null) return;
-            var connection = new SqlConnection(_connectionString);
+            if (Transaction != null) return;
+            var connection = new SqlConnection(ConnectionString);
             connection.Open();
-            _transaction = connection.BeginTransaction(allowDirty ? IsolationLevel.ReadUncommitted : IsolationLevel.ReadCommitted);
+            Transaction = connection.BeginTransaction(allowDirty ? IsolationLevel.ReadUncommitted : IsolationLevel.ReadCommitted);
             _connection = connection;
         }
 
-        public bool IsInTransaction
-        {
-            get { return _transaction != null; }
-        }
+        public bool IsInTransaction => Transaction != null;
 
         public IDBConnection Clone()
         {
@@ -189,8 +172,8 @@ namespace Stack.Core.Data
             }
 
             newConn._dbcode = _dbcode;
-            newConn._connectionString = _connectionString;
-            newConn._connectionString = _connectionString;
+            newConn.ConnectionString = ConnectionString;
+            newConn.ConnectionString = ConnectionString;
 
             return newConn;
         }
@@ -200,10 +183,10 @@ namespace Stack.Core.Data
         /// </summary>
         public void Commit()
         {
-            if (_transaction != null)
-                _transaction.Commit();
+            if (Transaction != null)
+                Transaction.Commit();
             else throw new Exception("commit without begin transaction");
-            _transaction = null;
+            Transaction = null;
         }
 
         /// <summary>
@@ -211,10 +194,7 @@ namespace Stack.Core.Data
         /// </summary>
         public void Close()
         {
-            if (_connection != null)
-            {
-                _connection.Close();
-            }
+            _connection?.Close();
             _connection = null;
         }
 
@@ -260,7 +240,7 @@ namespace Stack.Core.Data
         /// <param name="schemaName">the schema name of the store procedure</param>
         /// <param name="procName">the name of the stored procedure to request the stored procedure for</param>
         /// <returns>The command object for the requested stored procedure</returns>
-        public IDBCommand CreateStoredProcCommand(string schemaName, string procName)
+        public IDbCommand CreateStoredProcCommand(string schemaName, string procName)
         {
             schemaName = DataConfig.Current.GetSchemaName(schemaName);
             return new DBCommand(this, schemaName, procName);
@@ -270,15 +250,15 @@ namespace Stack.Core.Data
         /// Creates an IDBCommand compatible object for a sql command
         /// </summary>
         /// <param name="commandText">the command to execute</param>
-        /// <param name="commandType">the type of command being excuted</param>
+        /// <param name="commandType">the type of command being executed</param>
         /// <returns>The command object for the requested stored procedure</returns>
-        public IDBCommand CreateCommand(string commandText, CommandType commandType)
+        public IDbCommand CreateCommand(string commandText, CommandType commandType)
         {
             return new DBCommand(this, commandText, commandType);
         }
 
 
-        public int ResilentExecuteNonQuery(Action<IDBCommand> sqlCommandBuild, Action<IDBCommand> sqlCommand, string schema, string procname, int retries = 3)
+        public int ResilientExecuteNonQuery(Action<IDbCommand> sqlCommandBuild, Action<IDbCommand> sqlCommand, string schema, string procedureName, int retries = 3)
         {
             Exception lastException = null;
 
@@ -286,16 +266,14 @@ namespace Stack.Core.Data
             {
                 try
                 {
-                    using (var database = new SqlDBConnection(this.ConnectionString))
+                    using (var database = new SqlDBConnection(ConnectionString))
                     {
-                        using (var command = database.CreateStoredProcCommand(schema, procname))
+                        using (var command = database.CreateStoredProcCommand(schema, procedureName))
                         {
                             sqlCommandBuild(command);
-                            var retval = command.ExecuteNonQuery();
+                            var returnValue = command.ExecuteNonQuery();
                             sqlCommand(command);
-
-                            lastException = null;
-                            return retval;
+                            return returnValue;
                         }
                     }
                 }
@@ -313,7 +291,7 @@ namespace Stack.Core.Data
         }
 
 
-        public void ResilentExecuteReader(Action<IDBCommand> sqlCommandBuild, Action<IDataReader> reader, string schema, string procname, int retries = 3)
+        public void ResilientExecuteReader(Action<IDbCommand> sqlCommandBuild, Action<IDataReader> reader, string schema, string procedureName, int retries = 3)
         {
             Exception lastException = null;
 
@@ -321,13 +299,12 @@ namespace Stack.Core.Data
             {
                 try
                 {
-                    using (var database = new SqlDBConnection(this.ConnectionString))
+                    using (var database = new SqlDBConnection(ConnectionString))
                     {
-                        using (var command = database.CreateStoredProcCommand(schema, procname))
+                        using (var command = database.CreateStoredProcCommand(schema, procedureName))
                         {
                             sqlCommandBuild(command);
                             command.ExecuteReader(reader);
-                            lastException = null;
                             return;
                         }
                     }
@@ -346,7 +323,7 @@ namespace Stack.Core.Data
 
 
         /// <summary>
-        /// executes a simple parameratized sql command
+        /// executes a simple parameterized sql command
         /// </summary>
         /// <param name="commandText">The sql statement to execute</param>
         /// <param name="parameters">The parameters to pass with the command</param>
@@ -368,14 +345,14 @@ namespace Stack.Core.Data
 
         public void SetCommandConnection(SqlCommand cmd)
         {
-            if (_transaction != null)
+            if (Transaction != null)
             {
                 cmd.Connection = _connection;
-                cmd.Transaction = _transaction;
+                cmd.Transaction = Transaction;
             }
             else
             {
-                if (_connection == null) _connection = new SqlConnection(_connectionString);
+                if (_connection == null) _connection = new SqlConnection(ConnectionString);
                 cmd.Connection = _connection;
                 if (_connection.State!=ConnectionState.Open)
                     _connection.Open();
@@ -390,7 +367,7 @@ namespace Stack.Core.Data
         public void Init(string dbCode, string connectionString)
         {
             _dbcode = dbCode;
-            _connectionString = connectionString;
+            ConnectionString = connectionString;
         }
 
         /// <summary>
@@ -398,10 +375,10 @@ namespace Stack.Core.Data
         /// </summary>
         public void Rollback()
         {
-            if (_transaction != null)
-                _transaction.Rollback();
+            if (Transaction != null)
+                Transaction.Rollback();
             else throw new Exception("rollback without begin transaction");
-            _transaction = null;
+            Transaction = null;
         }
 
         /// <summary>
@@ -412,16 +389,16 @@ namespace Stack.Core.Data
         /// <param name="makeCopy">should it use the param, or make a copy of it</param>
         private void addDefaultParameter(DbParameter param, bool canBeCached, bool makeCopy)
         {
-            string pname = param.ParameterName.ToLower();
+            string name = param.ParameterName.ToLower();
 
-            if (canBeCached) _persistDefault.Add(pname);
+            if (canBeCached) _persistDefault.Add(name);
 
             if (makeCopy)
             {
                 DbParameter newParam = CreateParameter(param.ParameterName, param.Direction, param.Value);
-                _paramDefault[pname] = newParam;
+                _paramDefault[name] = newParam;
             }
-            else _paramDefault[pname] = param;
+            else _paramDefault[name] = param;
         }
 
         /// <summary>
@@ -529,17 +506,17 @@ namespace Stack.Core.Data
         /// <summary>
         /// Deep copy of cached SqlParameter array
         /// </summary>
-        private SqlParameter _cloneParameter(SqlParameter oldparam, bool copyValue)
+        private SqlParameter _cloneParameter(SqlParameter oldParameter, bool copyValue)
         {
             var newparam = new SqlParameter
             {
-                ParameterName = oldparam.ParameterName,
-                Value = copyValue ? oldparam.Value : DBNull.Value,
-                DbType = oldparam.DbType,
-                Size = oldparam.Size,
-                Direction = oldparam.Direction,
-                Precision = oldparam.Precision,
-                Scale = oldparam.Scale
+                ParameterName = oldParameter.ParameterName,
+                Value = copyValue ? oldParameter.Value : DBNull.Value,
+                DbType = oldParameter.DbType,
+                Size = oldParameter.Size,
+                Direction = oldParameter.Direction,
+                Precision = oldParameter.Precision,
+                Scale = oldParameter.Scale
             };
 
             return newparam;
@@ -567,22 +544,22 @@ namespace Stack.Core.Data
         /// Resolve at run time the appropriate set of SqlParameters for a stored procedure
         /// </summary>
         /// <param name="schemaName">the schema the stored procedure belongs to</param>
-        /// <param name="spName">The name of the stored procedure</param>
+        /// <param name="procedureName">The name of the stored procedure</param>
         /// <returns>The parameter collection discovered.</returns>
-        private SqlParameterCollection discoverSpParameterSet(string schemaName, string spName)
+        private SqlParameterCollection discoverParameters(string schemaName, string procedureName)
         {
-            if (string.IsNullOrEmpty(spName)) throw new ArgumentNullException("spName");
+            if (string.IsNullOrEmpty(procedureName)) throw new ArgumentNullException(nameof(procedureName));
 
-            string[] parts = spName.Split('.');
-            if (parts.Length < 2) parts = new[] { schemaName, spName };
+            string[] parts = procedureName.Split('.');
+            if (parts.Length < 2) parts = new[] { schemaName, procedureName };
             if (parts[1].IndexOf('[') < 0) parts[1] = '[' + parts[1] + ']';
-            spName = parts[0] + '.' + parts[1];
+            procedureName = parts[0] + '.' + parts[1];
 
             SqlCommand cmd;
-            using (var connection = new SqlConnection(_connectionString))
+            using (var connection = new SqlConnection(ConnectionString))
             {
                 connection.Open();
-                cmd = new SqlCommand(spName, connection) { CommandType = CommandType.StoredProcedure };
+                cmd = new SqlCommand(procedureName, connection) { CommandType = CommandType.StoredProcedure };
                 SqlCommandBuilder.DeriveParameters(cmd);               
             }
 
@@ -593,20 +570,20 @@ namespace Stack.Core.Data
         /// Retrieves the set of SqlParameters appropriate for the stored procedure
         /// </summary>
         /// <param name="schemaName">the schema the store procedure belongs to</param>
-        /// <param name="spName">The name of the stored procedure</param>
+        /// <param name="procedureName">The name of the stored procedure</param>
         /// <returns>An array of SqlParameters</returns>
-        internal SqlParameter[] GetSpParameters(string schemaName, string spName)
+        internal SqlParameter[] GetParameters(string schemaName, string procedureName)
         {
-            if (string.IsNullOrEmpty(spName)) throw new ArgumentNullException("spName");
+            if (string.IsNullOrEmpty(procedureName)) throw new ArgumentNullException(nameof(procedureName));
 
-            string key = _dbcode + ":" + schemaName + ":" + spName;
+            string key = _dbcode + ":" + schemaName + ":" + procedureName;
             key = key.ToLowerInvariant();
 
-            var cachedParameters = (SqlParameterCollection)_paramcache[key];
+            var cachedParameters = (SqlParameterCollection)_parameterCache[key];
             if (cachedParameters == null)
             {
-                SqlParameterCollection spParameters = discoverSpParameterSet(schemaName, spName);
-                _paramcache[key] = spParameters;
+                SqlParameterCollection spParameters = discoverParameters(schemaName, procedureName);
+                _parameterCache[key] = spParameters;
                 cachedParameters = spParameters;
             }
 
@@ -619,10 +596,10 @@ namespace Stack.Core.Data
         /// </summary>
         /// <param name="command">the SqlCommand to be prepared</param>
         /// <param name="commandType">the CommandType (stored procedure, text, etc.)</param>
-        /// <param name="schemaName">the scehma name of the store procedure etc</param>
+        /// <param name="schemaName">the schema name of the store procedure etc</param>
         /// <param name="commandText">the stored procedure name or T-SQL command</param>
         /// <param name="commandParameters">an array of SqlParameters to be associated with the command or 'null' if no parameters are required</param>
-        /// <param name="parameterValues">an array of sqlparameter values to assign to the commandParameters</param>
+        /// <param name="parameterValues">an array of sql parameter values to assign to the commandParameters</param>
         /// <returns>the last command executed</returns>
         internal string PrepareCommand(SqlCommand command, CommandType commandType, string schemaName, string commandText, SqlParameter[] commandParameters, object[] parameterValues)
         {
@@ -641,21 +618,21 @@ namespace Stack.Core.Data
             var sb = new StringBuilder();
             sb.AppendLine("exec " + command.CommandText);
             int i = 0;
-            foreach (SqlParameter sqlp in command.Parameters)
+            foreach (SqlParameter parameter in command.Parameters)
             {
                 sb.Append(i > 0 ? "\t," : "\t");
 
-                if (sqlp.Value == DBNull.Value)
-                    sb.AppendLine(sqlp.ParameterName + "=NULL");
+                if (parameter.Value == DBNull.Value)
+                    sb.AppendLine(parameter.ParameterName + "=NULL");
                 else
                 {
-                    switch (sqlp.DbType.ToString())
+                    switch (parameter.DbType.ToString())
                     {
                         case "Int":
-                            sb.AppendLine(sqlp.ParameterName + "=" + sqlp.Value);
+                            sb.AppendLine(parameter.ParameterName + "=" + parameter.Value);
                             break;
                         default:
-                            sb.AppendLine(sqlp.ParameterName + "='" + sqlp.Value + "'");
+                            sb.AppendLine(parameter.ParameterName + "='" + parameter.Value + "'");
                             break;
                     }
                 }
@@ -667,7 +644,7 @@ namespace Stack.Core.Data
 
         public void Dispose()
         {
-            if (_transaction == null) Close();
+            if (Transaction == null) Close();
         }
 
         #endregion Methods
