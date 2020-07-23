@@ -6,7 +6,7 @@ using System.Data.Common;
 
 #endregion References
 
-namespace Stack.Core.Data
+namespace Core.Data
 {
     /// <summary>
     /// Describes a DBCommand class that is used to build sql statements to be sent to the sql database

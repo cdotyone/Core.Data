@@ -47,10 +47,10 @@
 
   <ItemGroup>
     <PackageReference Include="Codigo.Core.Configuration" Version="2.0.1" />
-    <PackageReference Include="Codigo.Core.Configuration" Version="2.0.1" />
-    <PackageReference Include="Codigo.Core.Security" Version="2.0.1" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.6.0" />
+    <PackageReference Include="Codigo.Core.Configuration" Version="2.0.19" />
+    <PackageReference Include="Codigo.Core.Security" Version="2.0.12" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.7.0" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.1" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -10,14 +10,10 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading;
-using Stack.Core.Configuration;
-using Stack.Core.Logging;
-using Stack.Core.Logging.Configuration;
-using Stack.Core.Security;
 
 #endregion References
 
-namespace Stack.Core.Data
+namespace Core.Data
 {
     /// <summary>
     /// Provides an IDBConnection class for SQL Servers

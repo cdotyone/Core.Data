@@ -8,7 +8,7 @@ using System.Security.Claims;
 
 #endregion References
 
-namespace Stack.Core.Data
+namespace Core.Data
 {
     /// <summary>
     /// Defines an IDBConnection class that is used to connect to a database server

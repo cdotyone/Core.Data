@@ -6,13 +6,12 @@ using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
-using Stack.Core.Logging;
 
 #endregion References
 
 // ReSharper disable CoVariantArrayConversion
 
-namespace Stack.Core.Data
+namespace Core.Data
 {
 
     /// <summary>
