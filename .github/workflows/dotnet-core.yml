@@ -43,7 +43,7 @@ jobs:
     - name: Build .NET
       run: dotnet pack --configuration Release --no-restore -p:PackageVersion=${{ steps.cleaned.outputs.version }} --output dist 
     - name: Publish Nuget Package
-      run: dotnet nuget push dist\*.nupkg -s https://api.nugetorg/v3/index.json -k ${{ secrets.NUGET_KEY }}
+      run: dotnet nuget push dist\*.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_KEY }}
     - name: Conventional Changelog Action
       uses: TriPSs/conventional-changelog-action@v3
       with:
