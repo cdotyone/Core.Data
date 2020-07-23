@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30309.148
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Nuget", "Nuget", "{EFB32325-BB54-4C91-9350-05954953A9A4}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution Files", "{EFB32325-BB54-4C91-9350-05954953A9A4}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
 		.gitlab-ci.yml = .gitlab-ci.yml
