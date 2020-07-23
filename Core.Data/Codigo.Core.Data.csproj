@@ -46,7 +46,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Codigo.Core.Configuration" Version="2.0.1" />
     <PackageReference Include="Codigo.Core.Configuration" Version="2.0.19" />
     <PackageReference Include="Codigo.Core.Logging" Version="2.0.7" />
     <PackageReference Include="Codigo.Core.Security" Version="2.0.12" />
