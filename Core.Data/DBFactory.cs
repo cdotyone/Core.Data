@@ -1,5 +1,7 @@
 using System;
 using System.Configuration;
+using Core.Configuration;
+using Core.Logging;
 
 namespace Core.Data
 {

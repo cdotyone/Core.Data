@@ -10,6 +10,10 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading;
+using Core.Configuration;
+using Core.Logging;
+using Core.Logging.Configuration;
+using Core.Security;
 
 #endregion References
 
