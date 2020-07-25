@@ -2,9 +2,9 @@ name: .NET Core
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   build:
@@ -30,7 +30,7 @@ jobs:
         github_token: "${{ github.token }}"
         dry_run: true
     - name: Set .Net Version
-      uses: cdotyone/github-set-net-version@main
+      uses: cdotyone/github-set-net-version@master
       id: cleaned
       with:
         version: "${{ steps.semver.outputs.new_version }}"
@@ -51,7 +51,7 @@ jobs:
         tag-prefix: 'v'
         release-count: '20'
     - name: Push
-      uses: cdotyone/github-push@main
+      uses: cdotyone/github-push@master
       with:
         version: "${{ steps.cleaned.outputs.version }}"
       env:
