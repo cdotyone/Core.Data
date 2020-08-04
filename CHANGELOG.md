@@ -1,4 +1,13 @@
-## 2.0.4 (2020-07-23)
+## [2.0.5](https://github.com/cdotyone/Core.Imaging/compare/v2.0.4...v2.0.5) (2020-08-04)
+
+
+### Bug Fixes
+
+* name conflict to annoying ([f0bcb8b](https://github.com/cdotyone/Core.Imaging/commit/f0bcb8b4763e1cde882d938b5d51f09450def1ec))
+
+
+
+## [2.0.4](https://github.com/cdotyone/Core.Imaging/compare/3bd927d1a3ebbf865f82bc3536c06ce343a88a07...v2.0.4) (2020-07-23)
 
 
 ### Bug Fixes
