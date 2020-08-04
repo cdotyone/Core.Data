@@ -1,3 +1,12 @@
+## [2.0.9](https://github.com/cdotyone/Core.Imaging/compare/v2.0.5...v2.0.9) (2020-08-04)
+
+
+### Bug Fixes
+
+* does not appear to be bumping package.json version ([4d2a4ac](https://github.com/cdotyone/Core.Imaging/commit/4d2a4acabf43edc63a06b69b7bb62d4b208bfba6))
+
+
+
 ## [2.0.5](https://github.com/cdotyone/Core.Imaging/compare/v2.0.4...v2.0.5) (2020-08-04)
 
 
