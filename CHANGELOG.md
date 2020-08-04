@@ -1,3 +1,12 @@
+## [2.0.11](https://github.com/cdotyone/Core.Imaging/compare/v2.0.9...v2.0.11) (2020-08-04)
+
+
+### Bug Fixes
+
+* still not aligned ([4f73bf3](https://github.com/cdotyone/Core.Imaging/commit/4f73bf3b88341021ba9ba2b504bc58a2afb1faf7))
+
+
+
 ## [2.0.9](https://github.com/cdotyone/Core.Imaging/compare/v2.0.5...v2.0.9) (2020-08-04)
 
 
