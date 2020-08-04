@@ -11,7 +11,7 @@ namespace Core.Data
     /// <summary>
     /// Describes a DBCommand class that is used to build sql statements to be sent to the sql database
     /// </summary>
-    public interface IDbCommand : IDisposable
+    public interface IDBCommand : IDisposable
     {
         #region Properties
 

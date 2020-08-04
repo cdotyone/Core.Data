@@ -160,7 +160,7 @@ namespace Core.Data
         /// <param name="schema">the schema name of the store procedure</param>
         /// <param name="procName">the name of the stored procedure to request the stored procedure for</param>
         /// <returns>The command object for the requested stored procedure</returns>
-        IDbCommand CreateStoredProcCommand(string schema, string procName);
+        IDBCommand CreateStoredProcCommand(string schema, string procName);
 
         /// <summary>
         /// Creates an IDBCommand compatible object for a sql command
@@ -168,7 +168,7 @@ namespace Core.Data
         /// <param name="commandText">the command to execute</param>
         /// <param name="commandType">the type of command being excuted</param>
         /// <returns>The command object for the requested stored procedure</returns>
-        IDbCommand CreateCommand(string commandText, CommandType commandType);
+        IDBCommand CreateCommand(string commandText, CommandType commandType);
 
         /// <summary>
         /// executes a simple parameratized sql command
@@ -188,7 +188,7 @@ namespace Core.Data
         /// <param name="procedureName"></param>
         /// <param name="retries"></param>
         /// <returns></returns>
-        int ResilientExecuteNonQuery(Action<IDbCommand> sqlCommandBuild, Action<IDbCommand> sqlCommand, string schema, string procedureName, int retries = 3);
+        int ResilientExecuteNonQuery(Action<IDBCommand> sqlCommandBuild, Action<IDBCommand> sqlCommand, string schema, string procedureName, int retries = 3);
         
         /// <summary>
         /// 
@@ -199,7 +199,7 @@ namespace Core.Data
         /// <param name="schema"></param>
         /// <param name="procedureName"></param>
         /// <param name="retries"></param>
-        void ResilientExecuteReader(Action<IDbCommand> sqlCommandBuild, Action<IDataReader> reader, string schema, string procedureName, int retries = 3);
+        void ResilientExecuteReader(Action<IDBCommand> sqlCommandBuild, Action<IDataReader> reader, string schema, string procedureName, int retries = 3);
 
 
         /// <summary>

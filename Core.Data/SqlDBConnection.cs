@@ -240,7 +240,7 @@ namespace Core.Data
         /// <param name="schemaName">the schema name of the store procedure</param>
         /// <param name="procName">the name of the stored procedure to request the stored procedure for</param>
         /// <returns>The command object for the requested stored procedure</returns>
-        public IDbCommand CreateStoredProcCommand(string schemaName, string procName)
+        public IDBCommand CreateStoredProcCommand(string schemaName, string procName)
         {
             schemaName = DataConfig.Current.GetSchemaName(schemaName);
             return new DBCommand(this, schemaName, procName);
@@ -252,13 +252,13 @@ namespace Core.Data
         /// <param name="commandText">the command to execute</param>
         /// <param name="commandType">the type of command being executed</param>
         /// <returns>The command object for the requested stored procedure</returns>
-        public IDbCommand CreateCommand(string commandText, CommandType commandType)
+        public IDBCommand CreateCommand(string commandText, CommandType commandType)
         {
             return new DBCommand(this, commandText, commandType);
         }
 
 
-        public int ResilientExecuteNonQuery(Action<IDbCommand> sqlCommandBuild, Action<IDbCommand> sqlCommand, string schema, string procedureName, int retries = 3)
+        public int ResilientExecuteNonQuery(Action<IDBCommand> sqlCommandBuild, Action<IDBCommand> sqlCommand, string schema, string procedureName, int retries = 3)
         {
             Exception lastException = null;
 
@@ -291,7 +291,7 @@ namespace Core.Data
         }
 
 
-        public void ResilientExecuteReader(Action<IDbCommand> sqlCommandBuild, Action<IDataReader> reader, string schema, string procedureName, int retries = 3)
+        public void ResilientExecuteReader(Action<IDBCommand> sqlCommandBuild, Action<IDataReader> reader, string schema, string procedureName, int retries = 3)
         {
             Exception lastException = null;
 

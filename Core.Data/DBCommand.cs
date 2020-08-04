@@ -18,7 +18,7 @@ namespace Core.Data
     /// <summary>
     /// This class is used to construct DBCommands that will be executed against a sql database.
     /// </summary>
-    public class DBCommand : IDbCommand
+    public class DBCommand : IDBCommand
     {
         #region Fields
 
