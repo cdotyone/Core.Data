@@ -57,7 +57,7 @@ namespace Core.Data
 
         public IDBConnection AddClaimsDefaults(ClaimsPrincipal claimsPrincipal)
         {
-            var defaults = StandardClaimTypes.GetClaimsDefaultForDataConfig(DataConfig.Current);
+            var defaults = SecurityConfig.GetClaimsDefaultForDataConfig();
             foreach (var claim in defaults)
             {
                 AddDefaultParameter(CreateParameter(claim.Key, IdentityManager.GetClaimValue(claimsPrincipal, claim.Value)), false);
