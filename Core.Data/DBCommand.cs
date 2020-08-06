@@ -45,6 +45,7 @@ namespace Core.Data
             _dbconn = dbconn;
             _procname = procname;
             _schema = schemaName;
+            _schema = DatabaseFactory.GetSchemaName(schemaName);
             _commandType = CommandType.StoredProcedure;
             _params = new Dictionary<string, DbParameter>();
         }
@@ -73,7 +74,7 @@ namespace Core.Data
         public string Schema
         {
             get { return _schema; }
-            set { _schema = value; }
+            set { _schema = DatabaseFactory.GetSchemaName(value); }
         }
 
         #endregion Properties
