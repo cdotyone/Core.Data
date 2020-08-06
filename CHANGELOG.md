@@ -1,3 +1,12 @@
+# [2.1.0](https://github.com/cdotyone/Core.Imaging/compare/v2.0.11...v2.1.0) (2020-08-06)
+
+
+### Features
+
+* replace Core.Configuration with IConfiguration ([65116b6](https://github.com/cdotyone/Core.Imaging/commit/65116b64b973060572061720dbb1fe07b4ef3f76))
+
+
+
 ## [2.0.11](https://github.com/cdotyone/Core.Imaging/compare/v2.0.9...v2.0.11) (2020-08-04)
 
 
