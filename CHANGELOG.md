@@ -1,3 +1,17 @@
+# [2.2.0](https://github.com/cdotyone/Core.Imaging/compare/v2.1.0...v2.2.0) (2020-08-19)
+
+
+### Bug Fixes
+
+* update packages ([32d22cf](https://github.com/cdotyone/Core.Imaging/commit/32d22cfdb33da1a15016b1c89ab71694421e3809))
+
+
+### Features
+
+* add async support ([df7477c](https://github.com/cdotyone/Core.Imaging/commit/df7477ce966d5b7f1247015ee6b789666af7d981))
+
+
+
 # [2.1.0](https://github.com/cdotyone/Core.Imaging/compare/v2.0.11...v2.1.0) (2020-08-06)
 
 
