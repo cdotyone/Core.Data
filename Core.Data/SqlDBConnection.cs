@@ -5,15 +5,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Data.SqlClient;
 using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Core.Configuration;
 using Core.Logging;
 using Core.Logging.Configuration;
 using Core.Security;
+using Microsoft.Data.SqlClient;
 
 #endregion References
 
@@ -357,6 +358,31 @@ namespace Core.Data
                 if (_connection.State!=ConnectionState.Open)
                     _connection.Open();
             }
+        }
+
+        public async Task<bool> SetCommandConnectionAsync(SqlCommand cmd)
+        {
+            return await SetCommandConnectionAsync(CancellationToken.None, cmd);
+        }
+
+        public async Task<bool> SetCommandConnectionAsync(CancellationToken cancel, SqlCommand cmd)
+        {
+            if (Transaction != null)
+            {
+                cmd.Connection = _connection;
+                cmd.Transaction = Transaction;
+            }
+            else
+            {
+                if (_connection == null) _connection = new SqlConnection(ConnectionString);
+                cmd.Connection = _connection;
+                if (_connection.State != ConnectionState.Open)
+                {
+                    await _connection.OpenAsync(cancel);
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>

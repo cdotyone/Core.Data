@@ -4,9 +4,11 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Data.SqlClient;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Core.Logging;
+using Microsoft.Data.SqlClient;
 
 #endregion References
 
@@ -268,6 +270,80 @@ namespace Core.Data
             }
         }
 
+        /// <summary>
+        /// Execute a stored procedure via a SqlCommand (that returns no resultset) against the database specified in 
+        /// the connection string using the provided parameter values.  This method will query the database to discover the parameters for the 
+        /// stored procedure (the first time each stored procedure is called), and assign the values based on parameter order.
+        /// </summary>
+        /// <remarks>
+        /// This method provides no access to output parameters or the stored procedure's return value parameter.
+        /// 
+        /// e.g.:  
+        ///  int result = await ExecuteNonQueryAsync(connString, "PublishOrders", 24, 36);
+        /// </remarks>
+        /// <returns>an int representing the number of rows affected by the command, returns -1 when there is an error</returns>
+        public async Task<int> ExecuteNonQueryAsync()
+        {
+            return await ExecuteNonQueryAsync(CancellationToken.None);
+        }
+
+        public async Task<int> ExecuteNonQueryAsync(CancellationToken cancel)
+        {
+            if (_commandType != CommandType.StoredProcedure)
+            {
+                return executeCommandNonQuery();
+            }
+
+#if AWAITUSING
+            await 
+#endif
+            using (var cmd = new SqlCommand { CommandTimeout = _dbconn.CommandTimeout })
+            {
+                _dbconn.LastSql = string.Empty;
+                int retval = -1;
+
+                try
+                {
+                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", _schema, _procname))
+                    {
+                        var sqlDBConnection = _dbconn as SqlDBConnection;
+                        if (sqlDBConnection == null) return -1;
+                        await sqlDBConnection.SetCommandConnectionAsync(cmd);
+
+                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                        var commandParameters = new List<SqlParameter>(sqlDBConnection.GetParameters(_schema, _procname))
+                            {
+                                new SqlParameter("@RETURN_VALUE", 0) {Direction = ParameterDirection.ReturnValue}
+                            };
+
+                        //assign the provided values to these parameters based on parameter order
+                        _dbconn.LastSql = sqlDBConnection.PrepareCommand(cmd, CommandType.StoredProcedure, _schema, _procname,
+                                                 commandParameters.ToArray(), _params.Values.ToArray());
+                        commandParameters.Clear();
+                        Logger.LogTrace(LoggingBoundaries.Database, "ExecuteNonQuery Called:\n{0}", _dbconn.LastSql);
+
+                        retval = await cmd.ExecuteNonQueryAsync(cancel);
+
+                        if (cmd.Transaction == null)
+                        {
+                            cmd.Connection.Close();
+                            cmd.Connection = null;
+                        }
+
+                        return retval;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    cmd.Connection = null;
+                    var ex2 = new SqlDBException(ex, cmd, _dbconn.LastSql);
+                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                        throw ex2;
+                }
+
+                return retval;
+            }
+        }
 
         /// <summary>
         /// Execute a stored procedure via a SqlCommand (that returns a resultset) against the database specified in 
@@ -297,6 +373,37 @@ namespace Core.Data
             else
             {
                 executeProcReader(predicate, sqlDBConnection, false);
+            }
+        }
+
+        /// <summary>
+        /// Execute a stored procedure via a SqlCommand (that returns a resultset) against the database specified in 
+        /// the connection string using the provided parameter values.  This method will query the database to discover the parameters for the 
+        /// stored procedure (the first time each stored procedure is called), and assign the values based on parameter order.
+        /// </summary>
+        /// <remarks>
+        /// This method provides no access to output parameters or the stored procedure's return value parameter.
+        /// 
+        /// e.g.:  
+        ///  SqlDataReader dr = await ExecuteReaderAsync("GetOrders", 24, 36);
+        /// </remarks>
+        /// <returns>a dataset containing the resultset generated by the command</returns>
+        public async Task ExecuteReaderAsync(CancellationToken cancel, Action<IDataReader> predicate)
+        {
+            if (_commandType != CommandType.StoredProcedure)
+            {
+                await executeCommandReaderAsync(cancel, predicate);
+                return;
+            }
+
+            var sqlDBConnection = _dbconn as SqlDBConnection;
+            if (sqlDBConnection == null) return;
+
+            if (sqlDBConnection.Transaction != null)
+                await executeProcReaderTranAsync(cancel, predicate, sqlDBConnection.Transaction, false);
+            else
+            {
+                await executeProcReaderAsync(cancel, predicate, sqlDBConnection, false);
             }
         }
 
@@ -348,6 +455,63 @@ namespace Core.Data
             }
         }
 
+        private async Task executeProcReaderAsync(CancellationToken cancel, Action<IDataReader> predicate, SqlDBConnection dbConn, bool sequential)
+        {
+#if AWAITUSING
+            await
+#endif
+            using (var connection = new SqlConnection(dbConn.ConnectionString))
+            {
+                //create a command and prepare it for execution
+#if AWAITUSING
+                await
+#endif
+                using (var command = new SqlCommand { CommandTimeout = _dbconn.CommandTimeout, Connection = connection })
+                {
+                    _dbconn.LastSql = string.Empty;
+
+                    try
+                    {
+                        using (Logger.CreateTrace(LoggingBoundaries.Database, "executeProcReader", _schema, _procname))
+                        {
+
+                            //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                            SqlParameter[] commandParameters = dbConn.GetParameters(_schema, _procname);
+
+                            /*                            foreach (var def in _defaults)
+                                                        {
+                                                            if (!_params.ContainsKey(def.Key))
+                                                                AddInParameter(def.Key, def.Value);
+                                                        }*/
+
+                            //assign the provided values to these parameters based on parameter order
+                            _dbconn.LastSql = dbConn.PrepareCommand(command, CommandType.StoredProcedure, _schema,
+                                                                    _procname, commandParameters, _params.Values.ToArray());
+                            Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
+
+                            if (connection.State != ConnectionState.Open)
+                            {
+                                await connection.OpenAsync(cancel);
+                            }
+#if AWAITUSING
+                            await
+#endif
+                            using (SqlDataReader dr = sequential ? await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancel) : await command.ExecuteReaderAsync(cancel))
+                            {
+                                predicate(dr);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        var ex2 = new SqlDBException(ex, command, _dbconn.LastSql);
+                        if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                            throw ex2;
+                    }
+                }
+            }
+        }
+
         private void executeProcReaderTran(Action<IDataReader> predicate, SqlTransaction transaction, bool sequential)
         {
             //create a command and prepare it for execution
@@ -377,6 +541,56 @@ namespace Core.Data
                         Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
 
                         using (SqlDataReader dr = sequential ? command.ExecuteReader(CommandBehavior.SequentialAccess) :  command.ExecuteReader())
+                        {
+                            predicate(dr);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    command.Connection = null;
+                    var ex2 = new SqlDBException(ex, command, _dbconn.LastSql);
+                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                        throw ex2;
+                }
+            }
+        }
+
+
+        private async Task executeProcReaderTranAsync(CancellationToken cancel, Action<IDataReader> predicate, SqlTransaction transaction, bool sequential)
+        {
+            //create a command and prepare it for execution
+#if AWAITUSING
+            await 
+#endif
+            using (var command = new SqlCommand { CommandTimeout = _dbconn.CommandTimeout, Connection = transaction.Connection, Transaction = transaction })
+            {
+                _dbconn.LastSql = string.Empty;
+
+                try
+                {
+                    using (Logger.CreateTrace(LoggingBoundaries.Database, "executeProcReaderTran", _schema, _procname))
+                    {
+                        var sqlDBConnection = _dbconn as SqlDBConnection;
+                        if (sqlDBConnection == null) return;
+
+                        //pull the parameters for this stored procedure from the parameter cache (or discover them & populate the cache)
+                        SqlParameter[] commandParameters = sqlDBConnection.GetParameters(_schema, _procname);
+
+                        /*                        foreach (var def in _defaults)
+                                                {
+                                                    if (!_params.ContainsKey(def.Key))
+                                                        AddInParameter(def.Key, def.Value);
+                                                }*/
+
+                        //assign the provided values to these parameters based on parameter order
+                        _dbconn.LastSql = sqlDBConnection.PrepareCommand(command, CommandType.StoredProcedure, _schema,
+                                                                         _procname, commandParameters, _params.Values.ToArray());
+                        Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _dbconn.LastSql);
+#if AWAITUSING
+                        await 
+#endif
+                        using (SqlDataReader dr = sequential ? await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancel) : await command.ExecuteReaderAsync(cancel))
                         {
                             predicate(dr);
                         }
@@ -480,8 +694,37 @@ namespace Core.Data
             }
         }
 
+        /// <summary>
+        /// Execute a stored procedure via a SqlCommand (that returns a resultset) against the database specified in 
+        /// the connection string using the provided parameter values.  This method will query the database to discover the parameters for the 
+        /// stored procedure (the first time each stored procedure is called), and assign the values based on parameter order.
+        /// </summary>
+        /// <remarks>
+        /// This method provides no access to output parameters or the stored procedure's return value parameter.
+        /// 
+        /// e.g.:  
+        ///  SqlDataReader dr = ExecuteReader("GetOrders", 24, 36);
+        /// </remarks>
+        /// <returns>a dataset containing the resultset generated by the command</returns>
+        public async Task ExecuteSequentialReaderAsync(Action<IDataReader> predicate)
+        {
+            await ExecuteSequentialReaderAsync(CancellationToken.None, predicate);
+        }
 
-        #region CommandText Commands 
+        public async Task ExecuteSequentialReaderAsync( CancellationToken cancel, Action<IDataReader> predicate)
+        {
+            var sqlDBConnection = _dbconn as SqlDBConnection;
+            if (sqlDBConnection == null) return;
+
+            if (sqlDBConnection.Transaction != null)
+                await executeProcReaderTranAsync(cancel, predicate, sqlDBConnection.Transaction, true);
+            else
+            {
+                await executeProcReaderAsync(cancel, predicate, sqlDBConnection, true);
+            }
+        }
+
+#region CommandText Commands 
 
         private int executeCommandNonQuery()
         {
@@ -620,7 +863,61 @@ namespace Core.Data
             }
         }
 
-        #endregion // CommandText Command
+        /// <summary>
+        /// Execute a generic query and return IDataReader
+        /// </summary>
+        /// <remarks>
+        /// This method provides no access to output parameters or the stored procedure's return value parameter.
+        /// 
+        /// e.g.:  
+        ///  SqlDataReader dr = ExecuteReader("SELECT * FROM USER");
+        /// </remarks>
+        /// <returns>a dataset containing the resultset generated by the command</returns>
+        private async Task executeCommandReaderAsync(CancellationToken cancel, Action<IDataReader> predicate)
+        {
+            //create a command and prepare it for execution
+#if AWAITUSING
+            await 
+#endif
+            using (var command = new SqlCommand { CommandTimeout = _dbconn.CommandTimeout, CommandType = _commandType, CommandText = _procname })
+            {
+                try
+                {
+                    using (Logger.CreateTrace(LoggingBoundaries.Database, "ExecuteReader", _procname))
+                    {
+                        foreach (DbParameter param in _params.Values)
+                        {
+                            command.Parameters.AddWithValue(param.ParameterName.Replace("@", ""), param.Value);
+                        }
+
+                        var sqlDBConnection = _dbconn as SqlDBConnection;
+                        if (sqlDBConnection == null) return;
+                        await sqlDBConnection.SetCommandConnectionAsync(cancel, command);
+
+                        Logger.LogTrace(LoggingBoundaries.Database, "Execute Reader Called:\n{0}", _procname);
+
+                        // call ExecuteReader with the appropriate CommandBehavior
+#if AWAITUSING
+            await 
+#endif
+                        using (SqlDataReader dr = await command.ExecuteReaderAsync(cancel))
+                        {
+                            predicate(dr);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    command.Connection = null;
+                    var ex2 = new SqlDBException(ex, command, _procname);
+                    if (Logger.HandleException(LoggingBoundaries.Database, ex2))
+                        throw ex2;
+                }
+            }
+        }
+
+
+#endregion // CommandText Command
 
         /// <summary>
         /// Get the value of a output paramter that was returned during the execution of the command.
@@ -642,7 +939,7 @@ namespace Core.Data
             return (from param in _params.Values where param.Direction == ParameterDirection.ReturnValue select param.Value).FirstOrDefault();
         }
 
-        #endregion Methods
+#endregion Methods
     }
 
 }
