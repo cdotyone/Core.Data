@@ -10,9 +10,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Core.Configuration;
 using Core.Logging;
-using Core.Logging.Configuration;
 using Core.Security;
 using Microsoft.Data.SqlClient;
 
@@ -44,19 +42,9 @@ namespace Core.Data
         /// </summary>
         public SqlDBConnection()
         {
-            AddDefaults();
         }
 
-        private void AddDefaults()
-        {
-            AddDefaultParameter(CreateParameter("@computerName", Environment.MachineName), false);
-            AddDefaultParameter("@environmentCode", LoggingConfig.Current.EnvironmentCode);
-            AddDefaultParameter("@clientCode", LoggingConfig.Current.ClientCode);
-            AddDefaultParameter("@moduleCode", LoggingConfig.Current.ApplicationName);
-            AddDefaultParameter(CreateParameter("@wasError", false), false);
-        }
-
-        public IDBConnection AddClaimsDefaults(ClaimsPrincipal claimsPrincipal)
+         public IDBConnection AddClaimsDefaults(ClaimsPrincipal claimsPrincipal)
         {
             var defaults = SecurityConfig.GetClaimsDefaultForDataConfig();
             foreach (var claim in defaults)
@@ -73,7 +61,6 @@ namespace Core.Data
         public SqlDBConnection(string connectionString)
             : this()
         {
-            AddDefaults();
             ConnectionString = connectionString;
         }
 
@@ -243,7 +230,7 @@ namespace Core.Data
         /// <returns>The command object for the requested stored procedure</returns>
         public IDBCommand CreateStoredProcCommand(string schemaName, string procName)
         {
-            schemaName = DataConfig.Current.GetSchemaName(schemaName);
+            //schemaName = DataConfig.Current.GetSchemaName(schemaName);
             return new DBCommand(this, schemaName, procName);
         }
 

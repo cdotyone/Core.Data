@@ -1,24 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>netcoreapp3.1;netstandard2.0;netstandard2.1;net48</TargetFrameworks>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <AssemblyName>Codigo.Core.Data</AssemblyName>
-    <RootNamespace>Core.Data</RootNamespace>
-    <LangVersion>8.0</LangVersion>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;net48;net5.0;net6.0</TargetFrameworks>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<AssemblyName>Codigo.Core.Data</AssemblyName>
+		<RootNamespace>Core.Data</RootNamespace>
+	</PropertyGroup>
 
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard2.0'">
-    <DefineConstants>NETCORE;NETSTANDARD;NETSTANDARD2_0</DefineConstants>
-  </PropertyGroup>
+	<PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard2.0'">
+		<DefineConstants>NETCORE;NETSTANDARD;NETSTANDARD2_0</DefineConstants>
+	</PropertyGroup>
 
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard2.1'">
-    <DefineConstants>NETCORE;NETSTANDARD;NETSTANDARD2_1;AWAITUSING;</DefineConstants>
-  </PropertyGroup>
+	<PropertyGroup Condition=" '$(TargetFramework)' == 'net5.0'">
+		<DefineConstants>NETCORE;</DefineConstants>
+	</PropertyGroup>
 
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp3.1'">
-    <DefineConstants>NETCORE;AWAITUSING;</DefineConstants>
-  </PropertyGroup>
+	<PropertyGroup Condition=" '$(TargetFramework)' == 'net6.0'">
+		<DefineConstants>NETCORE;</DefineConstants>
+	</PropertyGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net48' ">
     <Reference Include="mscorlib" />
@@ -52,11 +51,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Codigo.Core.Logging" Version="2.0.7" />
-    <PackageReference Include="Codigo.Core.Security" Version="2.1.1" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.1" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="2.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="3.1.7" />
+    <PackageReference Include="Codigo.Core.Logging" Version="3.1.1" />
+    <PackageReference Include="Codigo.Core.Security" Version="2.2.1" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="4.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="6.0.0" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="6.0.0" />
   </ItemGroup>
 
   <PropertyGroup>
